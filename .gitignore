@@ -1,0 +1,11 @@
+# Rust build artifacts
+/target/
+
+# Backup files (per project convention)
+*.bak
+
+# Local Claude Code settings (machine-specific)
+.claude/settings.local.json
+
+# OS
+.DS_Store

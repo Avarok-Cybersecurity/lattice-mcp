@@ -1,0 +1,58 @@
+[package]
+name = "lattice-mcp"
+version = "0.1.0"
+edition = "2021"
+description = "Agent supervisor memory system powered by LatticeDB"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# MCP SDK (official Rust)
+rmcp = { version = "0.16", features = ["server", "transport-io"] }
+
+# LatticeDB (embedded mode)
+lattice-core = { path = "../lattice-db/crates/lattice-core", features = ["simd"] }
+lattice-storage = { path = "../lattice-db/crates/lattice-storage", features = ["native"] }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+async-trait = "0.1"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+schemars = "1"
+
+# HTTP client (embedding API + remote LatticeDB)
+reqwest = { version = "0.12", features = ["json"] }
+
+# Configuration
+toml = "0.8"
+
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Logging (stderr only — stdout reserved for MCP stdio)
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# CLI
+clap = { version = "4.5", features = ["derive"] }
+
+# Deterministic point IDs from content hashes
+xxhash-rust = { version = "0.8", features = ["xxh3"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Session IDs
+uuid = { version = "1.0", features = ["v4"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tempfile = "3"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+opt-level = 3

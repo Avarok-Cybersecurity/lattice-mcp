@@ -1,0 +1,63 @@
+# Lattice-MCP Configuration
+# Copy to ~/.lattice-mcp/config.toml and adjust as needed.
+
+[database]
+# "embedded" = in-process LatticeDB with DiskStorage (default)
+# "remote"   = connect to a running LatticeDB HTTP server
+mode = "embedded"
+
+# Data directory for embedded mode (supports ~ expansion)
+data_dir = "~/.lattice-mcp/data"
+
+# URL for remote mode (required when mode = "remote")
+# remote_url = "http://192.168.68.61:6334"
+
+[embedding]
+# OpenAI-compatible embedding endpoint
+endpoint = "https://api.openai.com/v1/embeddings"
+model = "text-embedding-3-small"
+dimensions = 1536
+
+# Environment variable holding the API key (PCND: no default)
+api_key_env = "OPENAI_API_KEY"
+
+[memory]
+# Maximum results returned by recall/get_context
+max_retrieval_results = 20
+
+# Ebbinghaus forgetting curve half-life (days) per category
+episodic_decay_half_life_days = 14.0
+semantic_decay_half_life_days = 90.0
+procedural_decay_half_life_days = 60.0
+
+[retrieval]
+# HybridRAG scoring weights (must sum to 1.0)
+vector_weight = 0.4
+graph_weight = 0.25
+recency_weight = 0.2
+importance_weight = 0.15
+
+# Graph traversal depth for neighborhood context
+graph_hop_depth = 2
+
+[consolidation]
+# "llm"          = use chat completions for summarization
+# "algorithmic"  = pure TF-IDF-like term extraction (no external calls)
+# "auto"         = use LLM if chat_endpoint configured, else algorithmic
+mode = "auto"
+
+# Chat completions endpoint for LLM consolidation (optional)
+# chat_endpoint = "https://api.openai.com/v1/chat/completions"
+# chat_model = "gpt-4o-mini"
+
+[hooks]
+# "hybrid"      = auto-capture file edits + manual remember calls (default)
+# "auto_only"   = only auto-capture, no manual calls
+# "manual_only" = only manual remember calls
+mode = "hybrid"
+
+# Tool patterns that trigger auto-capture
+auto_capture_patterns = ["Edit", "Write", "Bash"]
+
+# Default importance for auto-captured memories
+auto_importance = 0.3
