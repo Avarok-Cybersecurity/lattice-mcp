@@ -62,5 +62,6 @@ pub fn make_test_config(data_dir: &Path) -> Config {
         query_transform: None,
         avatar: None,
         multi_signal: None,
+        retrieval_filter: None,
     }
 }

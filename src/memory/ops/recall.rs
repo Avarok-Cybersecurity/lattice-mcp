@@ -193,6 +193,22 @@ pub(crate) async fn run(
         });
     }
 
+    // Retraction filter (optional): drop memories marked superseded before
+    // fusion/rerank/ranking, so the next candidate takes the freed place.
+    if super::contradiction::retrieval_filter_enabled(sys) {
+        let superseded: std::collections::BTreeMap<u64, u64> = all_scored
+            .iter()
+            .filter_map(|s| s.memory.superseded_by().map(|by| (s.memory.id, by)))
+            .collect();
+        let kept =
+            retrieval::retraction::filter_retracted(all_scored, &superseded, false, usize::MAX);
+        tracing::info!(
+            filtered_retracted = kept.filtered_retracted,
+            "retraction filter"
+        );
+        all_scored = kept.hits.into_iter().map(|h| h.scored).collect();
+    }
+
     // Step 4: adaptive fusion (optional) — re-derive final_score from the
     // four sub-signals before reranking. Fixed-weight `hybrid_score` above
     // remains the default when fusion is absent/disabled.

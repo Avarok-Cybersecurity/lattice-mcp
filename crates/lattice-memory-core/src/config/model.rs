@@ -37,6 +37,14 @@ pub struct ContradictionConfig {
     pub auto_supersede: bool,
 }
 
+/// Retrieval-time retraction filter. All fields explicit (PCND). When
+/// `enabled`, recall drops memories marked superseded, and a confirmed
+/// `SUPERSEDES` also marks the superseded memory (`superseded_by`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RetrievalFilterConfig {
+    pub enabled: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RetrievalConfig {
     /// Weight for vector similarity in hybrid score (α)

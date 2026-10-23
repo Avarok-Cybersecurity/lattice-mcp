@@ -48,6 +48,7 @@ fn test_config() -> Config {
         query_transform: None,
         avatar: None,
         multi_signal: None,
+        retrieval_filter: None,
     }
 }
 

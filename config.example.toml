@@ -68,3 +68,10 @@ mode = "auto"
 # redact_patterns = []            # extra literal PII substrings to mask
 # allow_remote = false            # default false = local-first (embedded only);
 #                                 # set true to allow the avatar on a remote DB
+
+# Retraction filter (optional, opt-in). Recall hides Semantic memories that an
+# LLM-confirmed contradiction superseded ([contradiction] auto_supersede = true
+# writes superseded_by on the old memory while this is enabled). Supersessions
+# recorded while it was off carry only the SUPERSEDES edge and are not hidden.
+# [retrieval_filter]
+# enabled = true
