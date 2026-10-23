@@ -1,6 +1,5 @@
 //! Pinned-memory operations.
 
-use chrono::Utc;
 use tracing::info;
 
 use crate::error::{McpMemoryError, Result};
@@ -28,7 +27,7 @@ pub(crate) async fn pin(
         });
     }
 
-    let now = Utc::now();
+    let now = sys.clock.now();
     let id = Memory::content_id(content, MemoryCategory::Pinned);
     let label_str = label.unwrap_or("pinned").to_string();
 

@@ -5,7 +5,6 @@
 //! `remember::commit_upsert` (single upsert; the slot-keyed point id means a
 //! re-observation UPSERTs in place and the avatar sharpens).
 
-use chrono::Utc;
 use tracing::info;
 
 use crate::config::AvatarConfig;
@@ -99,7 +98,7 @@ pub(crate) async fn store(
         }
     }
 
-    let now = Utc::now();
+    let now = sys.clock.now();
     let memory = Memory {
         id,
         category: MemoryCategory::Avatar,

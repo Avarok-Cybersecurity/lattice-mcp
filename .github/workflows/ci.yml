@@ -41,6 +41,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+          targets: wasm32-unknown-unknown, wasm32v1-none
 
       - name: Cache
         uses: Swatinem/rust-cache@v2
@@ -51,12 +52,28 @@ jobs:
         working-directory: lattice-mcp
         # No --all: that would reach into the lattice-db path-dep workspace,
         # whose formatting this repo does not own.
-        run: cargo fmt --check
+        run: |
+          cargo fmt --check
+          cargo fmt --check -p lattice-memory-core
 
       - name: Clippy
         working-directory: lattice-mcp
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Tests (hermetic)
         working-directory: lattice-mcp
-        run: cargo test
+        run: cargo test --workspace
+
+      # The core without `std` (libm math, BTreeMap payloads) is a separate
+      # build of the same code; test it too.
+      - name: Tests (lattice-memory-core, no_std build)
+        working-directory: lattice-mcp
+        run: cargo test -p lattice-memory-core
+
+      - name: lattice-memory-core builds for wasm (no_std)
+        working-directory: lattice-mcp
+        run: |
+          for t in wasm32-unknown-unknown wasm32v1-none; do
+            cargo build -p lattice-memory-core --target "$t"
+            cargo build -p lattice-memory-core --target "$t" --features schema
+          done

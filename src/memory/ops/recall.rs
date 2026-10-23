@@ -37,7 +37,7 @@ pub(crate) async fn run(
     };
 
     let query_vector = sys.embedder.embed(&effective_query).await?;
-    let now = Utc::now();
+    let now = sys.clock.now();
     let mut all_scored = Vec::new();
 
     let cats = if categories.is_empty() {
@@ -64,8 +64,8 @@ pub(crate) async fn run(
             continue;
         }
 
-        // Membership set for graph_relevance (O(1) lookups, not O(n*m)).
-        let hit_ids_set: std::collections::HashSet<u64> = hits.iter().map(|h| h.id).collect();
+        // Membership set for graph_relevance (O(log n) lookups, not O(n*m)).
+        let hit_ids_set: std::collections::BTreeSet<u64> = hits.iter().map(|h| h.id).collect();
         let hit_ids: Vec<u64> = hits.iter().map(|h| h.id).collect();
 
         // Batch-fetch the hit memories in one round-trip (was N get_memory).

@@ -1,6 +1,5 @@
 //! Maintenance operations — PageRank recomputation over the memory graph.
 
-use chrono::Utc;
 use tracing::info;
 
 use crate::error::Result;
@@ -116,7 +115,7 @@ pub(crate) async fn prune(sys: &mut MemorySystem, category: MemoryCategory) -> R
 
     let memories = sys.store.list_all(category).await?;
     let total = memories.len();
-    let now = Utc::now();
+    let now = sys.clock.now();
 
     let half_life = match category {
         MemoryCategory::Episodic => sys.config.memory.episodic_decay_half_life_days,

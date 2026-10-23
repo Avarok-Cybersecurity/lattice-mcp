@@ -5,7 +5,13 @@ edition = "2021"
 description = "Agent supervisor memory system powered by LatticeDB"
 license = "MIT OR Apache-2.0"
 
+[workspace]
+members = [".", "crates/lattice-memory-core"]
+
 [dependencies]
+# The pure memory model (types, importance, retrieval, consolidation, ...).
+lattice-memory-core = { path = "crates/lattice-memory-core", features = ["std", "schema"] }
+
 # MCP SDK (official Rust)
 rmcp = { version = "0.16", features = ["server", "transport-io"] }
 

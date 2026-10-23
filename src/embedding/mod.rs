@@ -4,7 +4,7 @@
 //! Implementations perform the actual HTTP I/O.
 
 pub mod chat;
-pub mod chat_types;
+pub use lattice_memory_core::chat_types;
 pub mod openai;
 
 use async_trait::async_trait;
