@@ -89,11 +89,7 @@ mod tests {
     #[test]
     fn triangle_converges_to_equal() {
         // A→B, B→C, C→A — symmetric cycle
-        let adj: Vec<(u64, Vec<u64>)> = vec![
-            (1, vec![2]),
-            (2, vec![3]),
-            (3, vec![1]),
-        ];
+        let adj: Vec<(u64, Vec<u64>)> = vec![(1, vec![2]), (2, vec![3]), (3, vec![1])];
         let scores = compute_pagerank(&adj, 0.85, 20);
         assert_eq!(scores.len(), 3);
 
@@ -108,12 +104,8 @@ mod tests {
     #[test]
     fn star_graph_hub_highest() {
         // Hub (1) points to 2,3,4. No back-edges.
-        let adj: Vec<(u64, Vec<u64>)> = vec![
-            (1, vec![2, 3, 4]),
-            (2, vec![]),
-            (3, vec![]),
-            (4, vec![]),
-        ];
+        let adj: Vec<(u64, Vec<u64>)> =
+            vec![(1, vec![2, 3, 4]), (2, vec![]), (3, vec![]), (4, vec![])];
         let scores = compute_pagerank(&adj, 0.85, 20);
 
         // Nodes 2,3,4 receive rank from hub; hub only gets base rank.
@@ -129,30 +121,28 @@ mod tests {
     #[test]
     fn disconnected_nodes_get_base_rank() {
         // Node 1→2, node 3 disconnected
-        let adj: Vec<(u64, Vec<u64>)> = vec![
-            (1, vec![2]),
-            (2, vec![]),
-            (3, vec![]),
-        ];
+        let adj: Vec<(u64, Vec<u64>)> = vec![(1, vec![2]), (2, vec![]), (3, vec![])];
         let scores = compute_pagerank(&adj, 0.85, 20);
         assert_eq!(scores.len(), 3);
 
         // Node 3 should have the lowest score (only gets base (1-d)/N)
         let s3 = scores[&3];
         let s2 = scores[&2]; // receives rank from 1
-        assert!(s2 > s3, "connected node should rank higher: s2={s2} s3={s3}");
+        assert!(
+            s2 > s3,
+            "connected node should rank higher: s2={s2} s3={s3}"
+        );
     }
 
     #[test]
     fn scores_normalized_to_unit() {
-        let adj: Vec<(u64, Vec<u64>)> = vec![
-            (1, vec![2]),
-            (2, vec![3]),
-            (3, vec![1]),
-        ];
+        let adj: Vec<(u64, Vec<u64>)> = vec![(1, vec![2]), (2, vec![3]), (3, vec![1])];
         let scores = compute_pagerank(&adj, 0.85, 20);
         let max = scores.values().copied().fold(f32::NEG_INFINITY, f32::max);
-        assert!((max - 1.0).abs() < 0.01, "max score should be ~1.0, got {max}");
+        assert!(
+            (max - 1.0).abs() < 0.01,
+            "max score should be ~1.0, got {max}"
+        );
     }
 
     #[test]
@@ -166,13 +156,13 @@ mod tests {
     #[test]
     fn two_node_mutual() {
         // A↔B: both point to each other
-        let adj: Vec<(u64, Vec<u64>)> = vec![
-            (1, vec![2]),
-            (2, vec![1]),
-        ];
+        let adj: Vec<(u64, Vec<u64>)> = vec![(1, vec![2]), (2, vec![1])];
         let scores = compute_pagerank(&adj, 0.85, 20);
         let s1 = scores[&1];
         let s2 = scores[&2];
-        assert!((s1 - s2).abs() < 0.01, "mutual links should be equal: s1={s1} s2={s2}");
+        assert!(
+            (s1 - s2).abs() < 0.01,
+            "mutual links should be equal: s1={s1} s2={s2}"
+        );
     }
 }

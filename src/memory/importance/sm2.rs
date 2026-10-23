@@ -69,7 +69,10 @@ mod tests {
         let state = ImportanceState::default();
         let p = priority(state.sm2_interval, state.sm2_easiness);
         // 1/(1 + 1.0 * 2.5 * 0.1) = 1/1.25 = 0.8
-        assert!((p - 0.8).abs() < 0.01, "default priority should be ~0.8, got {p}");
+        assert!(
+            (p - 0.8).abs() < 0.01,
+            "default priority should be ~0.8, got {p}"
+        );
     }
 
     #[test]
@@ -98,7 +101,11 @@ mod tests {
 
         update(&mut state, 4); // third → interval grows by EF
         assert_eq!(state.sm2_repetitions, 3);
-        assert!(state.sm2_interval > 6.0, "interval should grow: {}", state.sm2_interval);
+        assert!(
+            state.sm2_interval > 6.0,
+            "interval should grow: {}",
+            state.sm2_interval
+        );
     }
 
     #[test]
@@ -149,7 +156,10 @@ mod tests {
     fn quality_three_barely_passes() {
         let mut state = ImportanceState::default();
         update(&mut state, 3);
-        assert_eq!(state.sm2_repetitions, 1, "quality=3 should count as success");
+        assert_eq!(
+            state.sm2_repetitions, 1,
+            "quality=3 should count as success"
+        );
         // EF should decrease slightly for quality=3
         // SM-2: 0.1 - (5-3)(0.08 + (5-3)*0.02) = 0.1 - 2*(0.08+0.04) = 0.1 - 0.24 = -0.14
         assert!(

@@ -50,14 +50,21 @@ mode = "auto"
 # chat_endpoint = "https://api.openai.com/v1/chat/completions"
 # chat_model = "gpt-4o-mini"
 
-[hooks]
-# "hybrid"      = auto-capture file edits + manual remember calls (default)
-# "auto_only"   = only auto-capture, no manual calls
-# "manual_only" = only manual remember calls
-mode = "hybrid"
+# Multi-signal retrieval (optional): blend a lexical keyword-overlap signal
+# into scoring alongside the semantic/graph/recency/importance signals, so
+# exact/rare tokens (error codes, identifiers, versions) that a dense embedder
+# blurs still surface. lexical_weight in [0,1]: final = (1-w)*hybrid + w*lexical.
+# [multi_signal]
+# enabled = true
+# lexical_weight = 0.35
 
-# Tool patterns that trigger auto-capture
-auto_capture_patterns = ["Edit", "Write", "Bash"]
-
-# Default importance for auto-captured memories
-auto_importance = 0.3
+# Persistent user-avatar subsystem (optional, opt-in). See docs/avatar-capture.md.
+# Strict local-first: requires [database] mode = "embedded" (validation fails
+# fast otherwise). Values are PII-redacted before storage.
+# [avatar]
+# enabled = true
+# allow_freeform = false          # curated slot vocabulary only (recommended)
+# auto_derive = true              # extract explicit slots at session_end
+# redact_patterns = []            # extra literal PII substrings to mask
+# allow_remote = false            # default false = local-first (embedded only);
+#                                 # set true to allow the avatar on a remote DB

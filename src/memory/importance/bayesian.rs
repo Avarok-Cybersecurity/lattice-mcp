@@ -109,7 +109,10 @@ mod tests {
             update(&mut state, true, 0.0);
         }
         let score = posterior_mean(state.alpha, state.beta);
-        assert!(score > 0.95, "50 positives should converge near 1.0, got {score}");
+        assert!(
+            score > 0.95,
+            "50 positives should converge near 1.0, got {score}"
+        );
     }
 
     #[test]
@@ -124,7 +127,7 @@ mod tests {
 
         // After 200 days with no feedback, evidence should decay
         update(&mut state, true, 200.0);
-        let after_decay = posterior_mean(state.alpha, state.beta);
+        let _after_decay = posterior_mean(state.alpha, state.beta);
         // Still positive (just added true), but accumulated evidence is weaker
         assert!(
             state.alpha < 20.0,
@@ -164,6 +167,9 @@ mod tests {
     #[test]
     fn exploration_bonus_capped_at_one() {
         let score = posterior_with_exploration(1.0, 1.0, 10.0);
-        assert!(score <= 1.0, "exploration bonus should not exceed 1.0, got {score}");
+        assert!(
+            score <= 1.0,
+            "exploration bonus should not exceed 1.0, got {score}"
+        );
     }
 }

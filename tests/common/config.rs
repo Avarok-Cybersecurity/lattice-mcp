@@ -3,9 +3,8 @@
 use std::path::Path;
 
 use lattice_mcp::config::{
-    Config, ConsolidationConfig, ConsolidationMode, DatabaseConfig, DatabaseMode,
-    EmbeddingConfig, FsrsConfig, HooksConfig, HooksMode, ImportanceConfig,
-    ImportanceWeights, MemoryConfig, RetrievalConfig,
+    Config, ConsolidationConfig, ConsolidationMode, DatabaseConfig, DatabaseMode, EmbeddingConfig,
+    FsrsConfig, ImportanceConfig, ImportanceWeights, MemoryConfig, RetrievalConfig,
 };
 
 /// Build a Config pointing at the given temp directory with importance enabled.
@@ -44,11 +43,8 @@ pub fn make_test_config(data_dir: &Path) -> Config {
             chat_model: None,
             min_importance: 0.4,
             temporal_half_life_days: 7.0,
-        },
-        hooks: HooksConfig {
-            mode: HooksMode::Hybrid,
-            auto_capture_patterns: vec!["Edit".into(), "Write".into(), "Bash".into()],
-            auto_importance: 0.3,
+            distill_enabled: None,
+            auto_consolidate: None,
         },
         reranker: None,
         importance: Some(ImportanceConfig {
@@ -58,5 +54,13 @@ pub fn make_test_config(data_dir: &Path) -> Config {
             pagerank_damping: 0.85,
             pagerank_iterations: 20,
         }),
+        write_policy: None,
+        fusion: None,
+        lifecycle: None,
+        diversify: None,
+        contradiction: None,
+        query_transform: None,
+        avatar: None,
+        multi_signal: None,
     }
 }

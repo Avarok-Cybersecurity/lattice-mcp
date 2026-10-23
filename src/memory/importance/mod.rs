@@ -43,8 +43,7 @@ pub fn composite_importance(
 
     let sm2_mastery = sm2::mastery(state.sm2_interval, state.sm2_easiness);
 
-    let feedback_weight =
-        weights.bayesian + weights.fsrs + weights.fsrs_difficulty + weights.sm2;
+    let feedback_weight = weights.bayesian + weights.fsrs + weights.fsrs_difficulty + weights.sm2;
     let static_weight = weights.pagerank + weights.tfidf + weights.salience;
 
     let feedback_score = if feedback_weight > 0.0 {
@@ -85,7 +84,7 @@ pub fn composite_importance(
 /// At 0 reviews → 0.5 (equal trust in feedback vs static).
 /// At 20 reviews → ~0.976 (feedback dominates).
 /// Half-saturation at ~1 review keeps the curve responsive from the first feedback.
-fn evidence_confidence(alpha: f32, beta: f32) -> f32 {
+pub(crate) fn evidence_confidence(alpha: f32, beta: f32) -> f32 {
     let review_count = (alpha + beta - 2.0).max(0.0);
     0.5 + 0.5 * (1.0 - 1.0 / (1.0 + review_count))
 }
@@ -159,14 +158,17 @@ mod tests {
     fn evidence_confidence_at_zero_reviews() {
         // Beta(1,1) prior → 0 reviews → confidence = 0.5
         let c = evidence_confidence(1.0, 1.0);
-        assert!((c - 0.5).abs() < 0.001, "0 reviews → confidence=0.5, got {c}");
+        assert!(
+            (c - 0.5).abs() < 0.001,
+            "0 reviews → confidence=0.5, got {c}"
+        );
     }
 
     #[test]
     fn evidence_confidence_grows_with_feedback() {
-        let c0 = evidence_confidence(1.0, 1.0);   // 0 reviews
-        let c5 = evidence_confidence(4.0, 3.0);    // 5 reviews
-        let c20 = evidence_confidence(15.0, 7.0);  // 20 reviews
+        let c0 = evidence_confidence(1.0, 1.0); // 0 reviews
+        let c5 = evidence_confidence(4.0, 3.0); // 5 reviews
+        let c20 = evidence_confidence(15.0, 7.0); // 20 reviews
         assert!(c0 < c5, "confidence should grow: {c0} vs {c5}");
         assert!(c5 < c20, "confidence should grow: {c5} vs {c20}");
         assert!(c20 > 0.95, "20 reviews → high confidence, got {c20}");
@@ -186,7 +188,10 @@ mod tests {
         let score = composite_importance(&state, Utc::now(), &default_weights());
         // confidence ≈ 0.976, feedback_score high, static_score ≈ 0
         // Score should still be high despite zero static signals
-        assert!(score > 0.5, "feedback should dominate after 20 reviews, got {score}");
+        assert!(
+            score > 0.5,
+            "feedback should dominate after 20 reviews, got {score}"
+        );
     }
 
     #[test]
@@ -202,7 +207,10 @@ mod tests {
             salience: 0.0,
         };
         let score = composite_importance(&state, Utc::now(), &weights);
-        assert!(score > 0.0, "feedback-only weights should produce score, got {score}");
+        assert!(
+            score > 0.0,
+            "feedback-only weights should produce score, got {score}"
+        );
     }
 
     #[test]
@@ -219,7 +227,10 @@ mod tests {
             salience: 0.2,
         };
         let score = composite_importance(&state, Utc::now(), &weights);
-        assert!(score > 0.0, "static-only weights should produce score, got {score}");
+        assert!(
+            score > 0.0,
+            "static-only weights should produce score, got {score}"
+        );
     }
 
     #[test]

@@ -60,7 +60,8 @@ pub fn initial_stability(category: MemoryCategory, config: &FsrsConfig) -> f32 {
         MemoryCategory::Episodic => config.episodic_initial_stability,
         MemoryCategory::Semantic => config.semantic_initial_stability,
         MemoryCategory::Procedural => config.procedural_initial_stability,
-        MemoryCategory::Pinned => 36500.0, // ~100 years: pinned never decays
+        // Pinned and Avatar are stable: ~100 years, effectively no decay.
+        MemoryCategory::Pinned | MemoryCategory::Avatar => 36500.0,
     }
 }
 
@@ -71,14 +72,20 @@ mod tests {
     #[test]
     fn retention_at_zero_is_one() {
         let r = retention(1.0, 0.0);
-        assert!((r - 1.0).abs() < 0.001, "retention at t=0 should be 1.0, got {r}");
+        assert!(
+            (r - 1.0).abs() < 0.001,
+            "retention at t=0 should be 1.0, got {r}"
+        );
     }
 
     #[test]
     fn retention_at_stability_is_e_inv() {
         let r = retention(7.0, 7.0);
         let expected = (-1.0_f64).exp() as f32; // ~0.368
-        assert!((r - expected).abs() < 0.01, "retention at t=S should be ~0.37, got {r}");
+        assert!(
+            (r - expected).abs() < 0.01,
+            "retention at t=S should be ~0.37, got {r}"
+        );
     }
 
     #[test]
@@ -92,7 +99,10 @@ mod tests {
     fn higher_stability_retains_longer() {
         let r_low = retention(1.0, 5.0);
         let r_high = retention(10.0, 5.0);
-        assert!(r_high > r_low, "higher stability should retain better: {r_high} vs {r_low}");
+        assert!(
+            r_high > r_low,
+            "higher stability should retain better: {r_high} vs {r_low}"
+        );
     }
 
     #[test]
@@ -100,7 +110,10 @@ mod tests {
         let mut state = ImportanceState::default();
         let before = state.fsrs_stability;
         update_state(&mut state, 4, 1.0);
-        assert!(state.fsrs_stability > before, "success should increase stability");
+        assert!(
+            state.fsrs_stability > before,
+            "success should increase stability"
+        );
     }
 
     #[test]
@@ -109,7 +122,10 @@ mod tests {
         state.fsrs_stability = 5.0;
         let before = state.fsrs_stability;
         update_state(&mut state, 1, 1.0);
-        assert!(state.fsrs_stability < before, "failure should decrease stability");
+        assert!(
+            state.fsrs_stability < before,
+            "failure should decrease stability"
+        );
     }
 
     #[test]
@@ -120,7 +136,10 @@ mod tests {
         for _ in 0..20 {
             update_state(&mut state, 0, 1.0);
         }
-        assert!(state.fsrs_stability >= 0.1, "stability should not go below floor");
+        assert!(
+            state.fsrs_stability >= 0.1,
+            "stability should not go below floor"
+        );
     }
 
     #[test]
@@ -129,7 +148,10 @@ mod tests {
         state.fsrs_difficulty = 0.5;
         let before = state.fsrs_difficulty;
         update_state(&mut state, 4, 1.0);
-        assert!(state.fsrs_difficulty < before, "success should decrease difficulty");
+        assert!(
+            state.fsrs_difficulty < before,
+            "success should decrease difficulty"
+        );
     }
 
     #[test]
@@ -137,7 +159,10 @@ mod tests {
         let mut state = ImportanceState::default();
         let before = state.fsrs_difficulty;
         update_state(&mut state, 1, 1.0);
-        assert!(state.fsrs_difficulty > before, "failure should increase difficulty");
+        assert!(
+            state.fsrs_difficulty > before,
+            "failure should increase difficulty"
+        );
     }
 
     #[test]
@@ -145,11 +170,17 @@ mod tests {
         let mut state = ImportanceState::default();
         state.fsrs_difficulty = 0.95;
         update_state(&mut state, 0, 1.0);
-        assert!(state.fsrs_difficulty <= 1.0, "difficulty should clamp at 1.0");
+        assert!(
+            state.fsrs_difficulty <= 1.0,
+            "difficulty should clamp at 1.0"
+        );
 
         state.fsrs_difficulty = 0.02;
         update_state(&mut state, 5, 1.0);
-        assert!(state.fsrs_difficulty >= 0.0, "difficulty should clamp at 0.0");
+        assert!(
+            state.fsrs_difficulty >= 0.0,
+            "difficulty should clamp at 0.0"
+        );
     }
 
     #[test]

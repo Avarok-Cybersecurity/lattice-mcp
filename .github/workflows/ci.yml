@@ -1,0 +1,62 @@
+name: CI
+
+# Hermetic checks: fmt, clippy (-D warnings), and the offline test suite.
+# The live/eval tests (tests/eval_lan.rs, tests/live_lan.rs) are #[ignore]d and
+# require the LAN stack, so they do NOT run here; gate them in a separate
+# staging job behind RUN_LAN_EVALS if/when a runner can reach the endpoints.
+#
+# NOTE: lattice-mcp depends on the private sibling repo `lattice-db` via path
+# dependencies (`../lattice-db/crates/...`). CI therefore checks out BOTH repos
+# side-by-side. Set `LATTICE_DB_REPO` and provide a read token secret
+# (LATTICE_DB_TOKEN) before this workflow can build.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  LATTICE_DB_REPO: avarok/lattice-db # <-- set to your org/repo for lattice-db
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout lattice-mcp
+        uses: actions/checkout@v4
+        with:
+          path: lattice-mcp
+
+      # Path dependency: lay lattice-db beside lattice-mcp so `../lattice-db`
+      # in Cargo.toml resolves. Requires a token with read access.
+      - name: Checkout lattice-db (path dependency)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.LATTICE_DB_REPO }}
+          path: lattice-db
+          token: ${{ secrets.LATTICE_DB_TOKEN }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: lattice-mcp
+
+      - name: Format check
+        working-directory: lattice-mcp
+        # No --all: that would reach into the lattice-db path-dep workspace,
+        # whose formatting this repo does not own.
+        run: cargo fmt --check
+
+      - name: Clippy
+        working-directory: lattice-mcp
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Tests (hermetic)
+        working-directory: lattice-mcp
+        run: cargo test

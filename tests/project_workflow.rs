@@ -16,7 +16,7 @@
 
 mod common;
 
-use lattice_mcp::memory::types::{MemoryCategory, relations};
+use lattice_mcp::memory::types::{relations, MemoryCategory};
 use lattice_mcp::memory::MemorySystem;
 use lattice_mcp::store::embedded::EmbeddedStore;
 
@@ -52,14 +52,10 @@ async fn multi_session_project_workflow() {
     // Pre-compute IDs we'll need for cross-session assertions
     let jwt_content = "Architecture decision: use JWT tokens for stateless authentication";
     let bcrypt_content = "Chose bcrypt for password hashing, auth library is jsonwebtoken";
-    let jwt_id = lattice_mcp::memory::types::Memory::content_id(
-        jwt_content,
-        MemoryCategory::Semantic,
-    );
-    let bcrypt_id = lattice_mcp::memory::types::Memory::content_id(
-        bcrypt_content,
-        MemoryCategory::Semantic,
-    );
+    let jwt_id =
+        lattice_mcp::memory::types::Memory::content_id(jwt_content, MemoryCategory::Semantic);
+    let bcrypt_id =
+        lattice_mcp::memory::types::Memory::content_id(bcrypt_content, MemoryCategory::Semantic);
 
     // =========================================================
     // SESSION 1: Planning
@@ -134,9 +130,15 @@ async fn multi_session_project_workflow() {
         .expect("remember API design");
 
         // --- Assertion 3: Graph discovery (manual connect) ---
-        sys.connect(jwt_id, bcrypt_id, relations::DEPENDS_ON, 0.9, MemoryCategory::Semantic)
-            .await
-            .expect("connect JWT→bcrypt");
+        sys.connect(
+            jwt_id,
+            bcrypt_id,
+            relations::DEPENDS_ON,
+            0.9,
+            MemoryCategory::Semantic,
+        )
+        .await
+        .expect("connect JWT→bcrypt");
 
         let traversal = sys
             .search_graph(MemoryCategory::Semantic, jwt_id, 2, None)
@@ -149,7 +151,10 @@ async fn multi_session_project_workflow() {
 
         // --- Assertion 6: Pin persistence ---
         let pin = sys
-            .pin("Always use explicit error types, never unwrap in production", Some("coding-standard"))
+            .pin(
+                "Always use explicit error types, never unwrap in production",
+                Some("coding-standard"),
+            )
             .await
             .expect("pin");
         assert_eq!(pin.category, MemoryCategory::Pinned);
@@ -175,11 +180,16 @@ async fn multi_session_project_workflow() {
 
         // --- Assertion 7: Stats growth (baseline) ---
         stats_after_s1 = sys.stats().await.expect("stats");
-        assert!(stats_after_s1.total > 0, "Should have memories after session 1");
+        assert!(
+            stats_after_s1.total > 0,
+            "Should have memories after session 1"
+        );
 
-        sys.session_end(Some("Completed auth feature planning with JWT, bcrypt, 3 endpoints"))
-            .await
-            .expect("session_end");
+        sys.session_end(Some(
+            "Completed auth feature planning with JWT, bcrypt, 3 endpoints",
+        ))
+        .await
+        .expect("session_end");
     }
 
     // =========================================================
@@ -190,7 +200,10 @@ async fn multi_session_project_workflow() {
 
         // --- Assertion 1: Session context ---
         let (_session_id, context) = sys
-            .session_start(Some("widget-app"), Some("Implement authentication endpoints"))
+            .session_start(
+                Some("widget-app"),
+                Some("Implement authentication endpoints"),
+            )
             .await
             .expect("session_start s2");
         assert!(
@@ -292,9 +305,11 @@ async fn multi_session_project_workflow() {
             stats_after_s2.total
         );
 
-        sys.session_end(Some("Implemented login, register, middleware. Fixed bcrypt bug"))
-            .await
-            .expect("session_end s2");
+        sys.session_end(Some(
+            "Implemented login, register, middleware. Fixed bcrypt bug",
+        ))
+        .await
+        .expect("session_end s2");
     }
 
     // =========================================================
@@ -305,7 +320,10 @@ async fn multi_session_project_workflow() {
 
         // --- Assertion 1 + 9: Cross-session context ---
         let (_session_id, context) = sys
-            .session_start(Some("widget-app"), Some("Review authentication implementation"))
+            .session_start(
+                Some("widget-app"),
+                Some("Review authentication implementation"),
+            )
             .await
             .expect("session_start s3");
         assert!(
@@ -332,8 +350,13 @@ async fn multi_session_project_workflow() {
             !bug_recall.is_empty(),
             "Recall should find the bcrypt bug fix from session 2"
         );
-        let found_bug = bug_recall.iter().any(|sm| sm.memory.content.contains("bcrypt"));
-        assert!(found_bug, "Bug recall should include the bcrypt error memory");
+        let found_bug = bug_recall
+            .iter()
+            .any(|sm| sm.memory.content.contains("bcrypt"));
+        assert!(
+            found_bug,
+            "Bug recall should include the bcrypt error memory"
+        );
 
         // --- Assertion 6: Pin persistence (session 3) ---
         let pinned = sys.list_pinned().await.expect("list_pinned s3");
@@ -366,8 +389,16 @@ async fn multi_session_project_workflow() {
         );
 
         // Verify category breakdown
-        let episodic_count = stats_after_s3.by_category.get("episodic").copied().unwrap_or(0);
-        let semantic_count = stats_after_s3.by_category.get("semantic").copied().unwrap_or(0);
+        let episodic_count = stats_after_s3
+            .by_category
+            .get("episodic")
+            .copied()
+            .unwrap_or(0);
+        let semantic_count = stats_after_s3
+            .by_category
+            .get("semantic")
+            .copied()
+            .unwrap_or(0);
         assert!(episodic_count > 0, "Should have episodic memories");
         assert!(semantic_count > 0, "Should have semantic memories");
 

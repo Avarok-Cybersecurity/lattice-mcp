@@ -1,11 +1,14 @@
 //! MCP tool definitions and the MemoryServer handler.
 
+mod avatar;
 mod connect;
 mod context;
 mod forget;
 mod graph;
+mod inputs;
 mod list_pinned;
 mod pin;
+mod prune;
 mod rate_recall;
 mod recall;
 mod reflect;
@@ -26,134 +29,7 @@ use rmcp::{tool, tool_handler, tool_router, ErrorData as McpError};
 use crate::memory::types::MemoryCategory;
 use crate::memory::MemorySystem;
 
-use schemars::JsonSchema;
-use serde::Deserialize;
-
-// --- Tool input types ---
-
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct RememberInput {
-    /// The memory content to store
-    pub content: String,
-    /// Category: "episodic", "semantic", or "procedural" (auto-detected if omitted)
-    pub category: Option<String>,
-    /// Importance score 0.0-1.0 (auto-computed if omitted)
-    pub importance: Option<f32>,
-    /// Event type (for episodic: "decision", "error", "change", "conversation")
-    pub event_type: Option<String>,
-    /// Point IDs of related memories to link to
-    pub related_to: Option<Vec<u64>>,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct RecallInput {
-    /// Search query — finds semantically similar memories
-    pub query: String,
-    /// Filter by categories (e.g. ["episodic", "semantic"]). Searches all if omitted.
-    pub categories: Option<Vec<String>>,
-    /// Max results to return
-    pub limit: Option<usize>,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct SessionStartInput {
-    /// Project name for context
-    pub project: Option<String>,
-    /// Description of the task being started
-    pub task_description: Option<String>,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct SessionEndInput {
-    /// Brief summary of what was accomplished
-    pub summary: Option<String>,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct GetContextInput {
-    /// Query for relevant context
-    pub query: String,
-    /// Max results
-    pub limit: Option<usize>,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct ReflectInput {
-    /// Category to consolidate (default: episodic)
-    pub category: Option<String>,
-    /// Topic to focus consolidation on
-    pub topic: Option<String>,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct ConnectInput {
-    /// Source memory ID
-    pub from_id: u64,
-    /// Target memory ID
-    pub to_id: u64,
-    /// Relation type (e.g. "RELATES_TO", "CAUSED", "DEPENDS_ON")
-    pub relation: String,
-    /// Edge weight 0.0-1.0 (default: 0.8)
-    pub weight: Option<f32>,
-    /// Category of the source memory
-    pub category: String,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct ForgetInput {
-    /// Memory ID to forget
-    pub memory_id: u64,
-    /// Category of the memory
-    pub category: String,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct UpdateMemoryInput {
-    /// Memory ID to update
-    pub memory_id: u64,
-    /// Category of the memory
-    pub category: String,
-    /// New content (if updating)
-    pub content: Option<String>,
-    /// New importance score (if updating)
-    pub importance: Option<f32>,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct SearchGraphInput {
-    /// Starting memory ID
-    pub start_id: u64,
-    /// Category of the starting memory
-    pub category: String,
-    /// Max traversal depth (default: 2)
-    pub max_depth: Option<usize>,
-    /// Filter by relation types
-    pub relations: Option<Vec<String>>,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct PinInput {
-    /// The content to pin as a persistent reminder
-    pub content: String,
-    /// Optional label for the pinned memory
-    pub label: Option<String>,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct UnpinInput {
-    /// Memory ID of the pinned reminder to remove
-    pub memory_id: u64,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct RateRecallInput {
-    /// Memory ID that was recalled
-    pub memory_id: u64,
-    /// Category of the memory
-    pub category: String,
-    /// Recall quality (0-5): 0=blackout, 1-2=failed, 3=hard, 4=good, 5=perfect
-    pub quality: u8,
-}
+pub use inputs::*;
 
 // --- MemoryServer ---
 
@@ -179,7 +55,8 @@ fn text_result(text: &str) -> CallToolResult {
 }
 
 fn json_result(value: &impl serde::Serialize) -> CallToolResult {
-    let json = serde_json::to_string_pretty(value).unwrap_or_else(|e| format!("{{\"error\": \"{e}\"}}"));
+    let json =
+        serde_json::to_string_pretty(value).unwrap_or_else(|e| format!("{{\"error\": \"{e}\"}}"));
     CallToolResult::success(vec![Content::text(json)])
 }
 
@@ -208,7 +85,9 @@ impl MemoryServer {
         let mem = self.memory.lock().await;
         match mem.list_pinned().await {
             Ok(pinned) if !pinned.is_empty() => {
-                result.content.push(Content::text(format_pinned_block(&pinned)));
+                result
+                    .content
+                    .push(Content::text(format_pinned_block(&pinned)));
                 result
             }
             _ => result,
@@ -219,10 +98,7 @@ impl MemoryServer {
         name = "remember",
         description = "Store a new memory. Auto-categorizes, generates embedding, and creates graph edges to similar memories. Use after making decisions, fixing bugs, learning preferences, or significant code changes."
     )]
-    async fn remember(
-        &self,
-        input: Parameters<RememberInput>,
-    ) -> Result<CallToolResult, McpError> {
+    async fn remember(&self, input: Parameters<RememberInput>) -> Result<CallToolResult, McpError> {
         let result = remember::handle(self, input.0).await?;
         Ok(self.append_pinned(result).await)
     }
@@ -231,10 +107,7 @@ impl MemoryServer {
         name = "recall",
         description = "Retrieve relevant memories using hybrid vector+graph search. Returns ranked results with context from graph neighborhood. Use before starting tasks to check prior knowledge."
     )]
-    async fn recall(
-        &self,
-        input: Parameters<RecallInput>,
-    ) -> Result<CallToolResult, McpError> {
+    async fn recall(&self, input: Parameters<RecallInput>) -> Result<CallToolResult, McpError> {
         let result = recall::handle(self, input.0).await?;
         Ok(self.append_pinned(result).await)
     }
@@ -279,10 +152,7 @@ impl MemoryServer {
         name = "reflect",
         description = "Consolidate related memories. Summarizes clusters of episodic memories into semantic knowledge. Call periodically to strengthen long-term memory."
     )]
-    async fn reflect(
-        &self,
-        input: Parameters<ReflectInput>,
-    ) -> Result<CallToolResult, McpError> {
+    async fn reflect(&self, input: Parameters<ReflectInput>) -> Result<CallToolResult, McpError> {
         let result = reflect::handle(self, input.0).await?;
         Ok(self.append_pinned(result).await)
     }
@@ -291,10 +161,7 @@ impl MemoryServer {
         name = "connect",
         description = "Create a directed edge between two memories. Use to explicitly link related knowledge."
     )]
-    async fn connect(
-        &self,
-        input: Parameters<ConnectInput>,
-    ) -> Result<CallToolResult, McpError> {
+    async fn connect(&self, input: Parameters<ConnectInput>) -> Result<CallToolResult, McpError> {
         let result = connect::handle(self, input.0).await?;
         Ok(self.append_pinned(result).await)
     }
@@ -303,10 +170,7 @@ impl MemoryServer {
         name = "forget",
         description = "Delete a memory. Use for outdated or incorrect information."
     )]
-    async fn forget(
-        &self,
-        input: Parameters<ForgetInput>,
-    ) -> Result<CallToolResult, McpError> {
+    async fn forget(&self, input: Parameters<ForgetInput>) -> Result<CallToolResult, McpError> {
         let result = forget::handle(self, input.0).await?;
         Ok(self.append_pinned(result).await)
     }
@@ -348,10 +212,7 @@ impl MemoryServer {
         name = "pin",
         description = "Pin a persistent reminder that appears in every response. Use for user preferences, workflow rules, or standing instructions."
     )]
-    async fn pin(
-        &self,
-        input: Parameters<PinInput>,
-    ) -> Result<CallToolResult, McpError> {
+    async fn pin(&self, input: Parameters<PinInput>) -> Result<CallToolResult, McpError> {
         let result = pin::handle(self, input.0).await?;
         Ok(self.append_pinned(result).await)
     }
@@ -360,10 +221,7 @@ impl MemoryServer {
         name = "unpin",
         description = "Remove a pinned reminder by its memory ID."
     )]
-    async fn unpin(
-        &self,
-        input: Parameters<UnpinInput>,
-    ) -> Result<CallToolResult, McpError> {
+    async fn unpin(&self, input: Parameters<UnpinInput>) -> Result<CallToolResult, McpError> {
         let result = unpin::handle(self, input.0).await?;
         Ok(self.append_pinned(result).await)
     }
@@ -374,6 +232,51 @@ impl MemoryServer {
     )]
     async fn list_pinned(&self) -> Result<CallToolResult, McpError> {
         let result = list_pinned::handle(self).await?;
+        Ok(self.append_pinned(result).await)
+    }
+
+    #[tool(
+        name = "avatar_store",
+        description = "Record or reinforce a durable fact about the USER in the persistent cross-session avatar (e.g. preferred_language, communication_tone, tooling, timezone). Re-storing the same slot sharpens confidence; a changed value supersedes the old one. Call this whenever you learn a stable user preference, habit, or trait. Optional avatar_id (default \"default\") supports multiple users/personas."
+    )]
+    async fn avatar_store(
+        &self,
+        input: Parameters<AvatarStoreInput>,
+    ) -> Result<CallToolResult, McpError> {
+        let result = avatar::handle_store(self, input.0).await?;
+        Ok(self.append_pinned(result).await)
+    }
+
+    #[tool(
+        name = "avatar_search",
+        description = "Retrieve relevant facts from the user's persistent avatar to personalize behavior. Use at task start (or when tailoring output) to recall the user's preferences, style, and habits across all prior sessions. Optional avatar_id (default \"default\")."
+    )]
+    async fn avatar_search(
+        &self,
+        input: Parameters<AvatarSearchInput>,
+    ) -> Result<CallToolResult, McpError> {
+        let result = avatar::handle_search(self, input.0).await?;
+        Ok(self.append_pinned(result).await)
+    }
+
+    #[tool(
+        name = "avatar_get",
+        description = "Dump the full user avatar (all known slots, most-confident first) for the given avatar_id (default \"default\"). Use to review or summarize everything known about the user."
+    )]
+    async fn avatar_get(
+        &self,
+        input: Parameters<AvatarGetInput>,
+    ) -> Result<CallToolResult, McpError> {
+        let result = avatar::handle_get(self, input.0).await?;
+        Ok(self.append_pinned(result).await)
+    }
+
+    #[tool(
+        name = "prune",
+        description = "Run a utility-driven lifecycle pass: keep the highest-utility memories per category within the configured budget, demoting (or evicting, if allowed) low-utility overflow. No-op unless lifecycle is enabled in config. Pinned memories are never pruned."
+    )]
+    async fn prune(&self, input: Parameters<PruneInput>) -> Result<CallToolResult, McpError> {
+        let result = prune::handle(self, input.0).await?;
         Ok(self.append_pinned(result).await)
     }
 
@@ -400,6 +303,10 @@ impl rmcp::handler::server::ServerHandler for MemoryServer {
                  memories with graph relationships and vector similarity search. \
                  Call session_start at conversation begin, remember after significant events, \
                  recall before new tasks, and session_end at conversation close. \
+                 It also maintains a persistent USER AVATAR across all sessions: whenever you \
+                 learn a durable fact about the user — a preference, habit, working style, tool, \
+                 or trait — call avatar_store to record it (it sharpens over time). Call \
+                 avatar_search at task start to personalize your behavior to the user. \
                  Pinned reminders appear in every tool response — always follow them."
                     .into(),
             ),

@@ -31,6 +31,28 @@ pub trait MemoryStore: Send + Sync {
     /// Get a memory by point ID from a specific collection.
     async fn get_memory(&self, category: MemoryCategory, id: u64) -> Result<Option<Memory>>;
 
+    /// Batch-fetch memories by ID (one round-trip where the backend supports
+    /// it). Returns only the IDs that exist, order unspecified. The default
+    /// loops `get_memory`; the remote store overrides with a single request.
+    async fn get_memories(&self, category: MemoryCategory, ids: &[u64]) -> Result<Vec<Memory>> {
+        let mut out = Vec::with_capacity(ids.len());
+        for &id in ids {
+            if let Some(m) = self.get_memory(category, id).await? {
+                out.push(m);
+            }
+        }
+        Ok(out)
+    }
+
+    /// Fetch stored embedding vectors by ID (for diversity / geometry features).
+    /// Returns only the IDs that exist, order unspecified. Callers should treat
+    /// an empty result as "vector-geometry unavailable" and degrade gracefully.
+    async fn get_vectors(
+        &self,
+        category: MemoryCategory,
+        ids: &[u64],
+    ) -> Result<Vec<(u64, Vec<f32>)>>;
+
     /// Traverse graph edges from a starting point.
     async fn traverse(
         &self,

@@ -9,11 +9,7 @@ use chrono::{DateTime, Utc};
 ///
 /// Returns a factor in [0.0, 1.0] where 1.0 = just created.
 /// Formula: `decay = 0.5^(elapsed_days / half_life_days)`
-pub fn temporal_decay(
-    created_at: DateTime<Utc>,
-    now: DateTime<Utc>,
-    half_life_days: f64,
-) -> f32 {
+pub fn temporal_decay(created_at: DateTime<Utc>, now: DateTime<Utc>, half_life_days: f64) -> f32 {
     let elapsed_secs = (now - created_at).num_seconds().max(0) as f64;
     let elapsed_days = elapsed_secs / 86400.0;
     0.5_f64.powf(elapsed_days / half_life_days) as f32
@@ -22,11 +18,7 @@ pub fn temporal_decay(
 /// Recency boost based on last access time.
 ///
 /// Returns [0.0, 1.0] where 1.0 = accessed just now.
-pub fn recency_score(
-    last_accessed: DateTime<Utc>,
-    now: DateTime<Utc>,
-    half_life_days: f64,
-) -> f32 {
+pub fn recency_score(last_accessed: DateTime<Utc>, now: DateTime<Utc>, half_life_days: f64) -> f32 {
     temporal_decay(last_accessed, now, half_life_days)
 }
 
@@ -51,10 +43,7 @@ pub fn auto_importance(content: &str, event_type: &str) -> f32 {
         score += 0.2;
     }
     // Architecture and design decisions are high importance
-    if event_type == "decision"
-        || lower.contains("architecture")
-        || lower.contains("design")
-    {
+    if event_type == "decision" || lower.contains("architecture") || lower.contains("design") {
         score += 0.2;
     }
     // User preferences are high importance

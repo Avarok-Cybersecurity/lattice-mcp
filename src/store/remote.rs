@@ -4,9 +4,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{McpMemoryError, Result};
-use crate::memory::types::{
-    relations, Memory, MemoryCategory, SearchHit, TraversalHit,
-};
+use crate::memory::types::{relations, Memory, MemoryCategory, SearchHit, TraversalHit};
 
 use super::MemoryStore;
 
@@ -91,15 +89,40 @@ struct TraverseResponse {
     result: TraverseResultDto,
 }
 
+// Scroll envelope: server returns ApiResponse<ScrollResult>
+// = { result: { points: [...], next_page_offset: Option<u64> } }.
 #[derive(Deserialize)]
-struct TraverseResultDto {
-    edges: Vec<EdgeRecordDto>,
+struct ScrollResponse {
+    result: ScrollResultDto,
 }
 
 #[derive(Deserialize)]
+struct ScrollResultDto {
+    points: Vec<ScrollPointDto>,
+    #[serde(default)]
+    next_page_offset: Option<u64>,
+}
+
+#[derive(Deserialize)]
+struct ScrollPointDto {
+    id: u64,
+    #[serde(default)]
+    payload: Option<std::collections::HashMap<String, serde_json::Value>>,
+}
+
+#[derive(Deserialize)]
+struct TraverseResultDto {
+    #[serde(default)]
+    edges: Vec<EdgeRecordDto>,
+}
+
+// Matches the server's traverse edge shape: { from_id, to_id, relation, weight }.
+// `weight` is ignored (serde drops unknown fields). Per-edge depth is NOT
+// returned; it is reconstructed by BFS over the edge set.
+#[derive(Deserialize)]
 struct EdgeRecordDto {
-    target_id: u64,
-    depth: usize,
+    from_id: u64,
+    to_id: u64,
     relation: String,
 }
 
@@ -112,6 +135,19 @@ struct PointResponse {
 struct PointResultDto {
     id: u64,
     payload: std::collections::HashMap<String, serde_json::Value>,
+}
+
+// For get_vectors: /points with with_vector:true returns { id, vector }.
+#[derive(Deserialize)]
+struct VectorResponse {
+    result: Vec<Option<VectorPointDto>>,
+}
+
+#[derive(Deserialize)]
+struct VectorPointDto {
+    id: u64,
+    #[serde(default)]
+    vector: Option<Vec<f32>>,
 }
 
 #[derive(Deserialize)]
@@ -127,14 +163,13 @@ struct CollectionInfoDto {
 impl RemoteStore {
     pub fn new(base_url: String, dimensions: usize) -> Self {
         Self {
-            client: reqwest::Client::new(),
+            client: reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(30))
+                .build()
+                .unwrap_or_else(|_| reqwest::Client::new()),
             base_url: base_url.trim_end_matches('/').to_string(),
             dimensions,
         }
-    }
-
-    fn url(&self, path: &str) -> String {
-        format!("{}{}", self.base_url, path)
     }
 
     fn collection_url(&self, category: MemoryCategory) -> String {
@@ -146,32 +181,10 @@ impl RemoteStore {
     }
 
     fn build_relations(category: MemoryCategory) -> std::collections::HashMap<String, u16> {
-        let mut rels = std::collections::HashMap::new();
-        match category {
-            MemoryCategory::Episodic => {
-                rels.insert(relations::PRECEDED_BY.into(), 0);
-                rels.insert(relations::CAUSED.into(), 1);
-                rels.insert(relations::RESOLVED_BY.into(), 2);
-                rels.insert(relations::LEARNED_FROM.into(), 3);
-                rels.insert(relations::EVIDENCED_BY.into(), 4);
-            }
-            MemoryCategory::Semantic => {
-                rels.insert(relations::RELATES_TO.into(), 0);
-                rels.insert(relations::DEPENDS_ON.into(), 1);
-                rels.insert(relations::CONTRADICTS.into(), 2);
-                rels.insert(relations::SUPERSEDES.into(), 3);
-                rels.insert(relations::USES_KNOWLEDGE.into(), 4);
-            }
-            MemoryCategory::Procedural => {
-                rels.insert(relations::APPLIES_TO.into(), 0);
-                rels.insert(relations::ALTERNATIVE_TO.into(), 1);
-                rels.insert(relations::REQUIRES.into(), 2);
-            }
-            MemoryCategory::Pinned => {
-                // No relations for pinned memories
-            }
-        }
-        rels
+        // Single source of truth: relations::REGISTRY (see memory/types.rs).
+        relations::relations_for(category)
+            .map(|(name, id)| (name.to_string(), id))
+            .collect()
     }
 
     /// Convert a PointResultDto payload (JSON Values) to the byte-based payload Memory expects.
@@ -188,7 +201,7 @@ impl RemoteStore {
 #[async_trait]
 impl MemoryStore for RemoteStore {
     async fn initialize(&mut self) -> Result<()> {
-        for &category in MemoryCategory::all() {
+        for &category in MemoryCategory::all_storage() {
             let url = self.collection_url(category);
 
             // Check if collection exists
@@ -244,10 +257,7 @@ impl MemoryStore for RemoteStore {
     }
 
     async fn upsert_memory(&mut self, memory: &Memory, vector: Vec<f32>) -> Result<()> {
-        let url = format!(
-            "{}/points",
-            self.collection_url(memory.category)
-        );
+        let url = format!("{}/points", self.collection_url(memory.category));
 
         // Convert byte-based payload to JSON values for the REST API
         let json_payload: std::collections::HashMap<String, serde_json::Value> = memory
@@ -294,10 +304,7 @@ impl MemoryStore for RemoteStore {
         query_vector: &[f32],
         limit: usize,
     ) -> Result<Vec<SearchHit>> {
-        let url = format!(
-            "{}/points/search",
-            self.collection_url(category)
-        );
+        let url = format!("{}/points/search", self.collection_url(category));
 
         let body = SearchBody {
             vector: query_vector.to_vec(),
@@ -339,10 +346,7 @@ impl MemoryStore for RemoteStore {
     }
 
     async fn get_memory(&self, category: MemoryCategory, id: u64) -> Result<Option<Memory>> {
-        let url = format!(
-            "{}/points",
-            self.collection_url(category)
-        );
+        let url = format!("{}/points", self.collection_url(category));
 
         let body = serde_json::json!({ "ids": [id], "with_payload": true });
 
@@ -374,6 +378,79 @@ impl MemoryStore for RemoteStore {
         }
     }
 
+    async fn get_memories(&self, category: MemoryCategory, ids: &[u64]) -> Result<Vec<Memory>> {
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        let url = format!("{}/points", self.collection_url(category));
+        let body = serde_json::json!({ "ids": ids, "with_payload": true });
+
+        let resp = self
+            .client
+            .post(&url)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| McpMemoryError::Store {
+                message: format!("Get points failed: {e}"),
+            })?;
+
+        if !resp.status().is_success() {
+            return Ok(Vec::new());
+        }
+
+        let parsed: PointResponse = resp.json().await.map_err(|e| McpMemoryError::Store {
+            message: format!("Failed to parse points response: {e}"),
+        })?;
+
+        let mut out = Vec::new();
+        for p in parsed.result.into_iter().flatten() {
+            let byte_payload = Self::convert_payload(&p.payload);
+            match Memory::from_payload(p.id, &byte_payload) {
+                Ok(m) => out.push(m),
+                Err(e) => tracing::warn!(id = p.id, "Failed to deserialize point: {e}"),
+            }
+        }
+        Ok(out)
+    }
+
+    async fn get_vectors(
+        &self,
+        category: MemoryCategory,
+        ids: &[u64],
+    ) -> Result<Vec<(u64, Vec<f32>)>> {
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        let url = format!("{}/points", self.collection_url(category));
+        let body = serde_json::json!({ "ids": ids, "with_vector": true, "with_payload": false });
+
+        let resp = self
+            .client
+            .post(&url)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| McpMemoryError::Store {
+                message: format!("Get vectors failed: {e}"),
+            })?;
+
+        if !resp.status().is_success() {
+            return Ok(Vec::new());
+        }
+
+        let parsed: VectorResponse = resp.json().await.map_err(|e| McpMemoryError::Store {
+            message: format!("Failed to parse vector response: {e}"),
+        })?;
+
+        Ok(parsed
+            .result
+            .into_iter()
+            .flatten()
+            .filter_map(|p| p.vector.map(|v| (p.id, v)))
+            .collect())
+    }
+
     async fn traverse(
         &self,
         category: MemoryCategory,
@@ -381,10 +458,7 @@ impl MemoryStore for RemoteStore {
         max_depth: usize,
         relations: Option<&[&str]>,
     ) -> Result<Vec<TraversalHit>> {
-        let url = format!(
-            "{}/graph/traverse",
-            self.collection_url(category)
-        );
+        let url = format!("{}/graph/traverse", self.collection_url(category));
 
         let body = TraverseBody {
             start_id,
@@ -410,13 +484,34 @@ impl MemoryStore for RemoteStore {
             message: format!("Failed to parse traverse response: {e}"),
         })?;
 
-        Ok(parsed
-            .result
-            .edges
+        // The server returns a flat edge list ({from_id,to_id,relation}) without
+        // per-edge depth. Reconstruct shortest-hop depth from `start_id` by
+        // relaxing the edge set up to `max_depth` times (matches the embedded
+        // store's path-depth semantics, used by graph-relevance scoring).
+        let edges = parsed.result.edges;
+        let mut depth_of: std::collections::HashMap<u64, usize> = std::collections::HashMap::new();
+        depth_of.insert(start_id, 0);
+        for _ in 0..max_depth.max(1) {
+            for e in &edges {
+                if let Some(&d) = depth_of.get(&e.from_id) {
+                    let nd = d + 1;
+                    depth_of
+                        .entry(e.to_id)
+                        .and_modify(|x| {
+                            if nd < *x {
+                                *x = nd
+                            }
+                        })
+                        .or_insert(nd);
+                }
+            }
+        }
+
+        Ok(edges
             .into_iter()
             .map(|e| TraversalHit {
-                target_id: e.target_id,
-                depth: e.depth,
+                target_id: e.to_id,
+                depth: depth_of.get(&e.to_id).copied().unwrap_or(1),
                 relation: e.relation,
             })
             .collect())
@@ -430,10 +525,7 @@ impl MemoryStore for RemoteStore {
         relation: &str,
         weight: f32,
     ) -> Result<()> {
-        let url = format!(
-            "{}/graph/edges",
-            self.collection_url(category)
-        );
+        let url = format!("{}/graph/edges", self.collection_url(category));
 
         let body = EdgeBody {
             from_id,
@@ -470,16 +562,18 @@ impl MemoryStore for RemoteStore {
         _to_id: u64,
         _relation: Option<&str>,
     ) -> Result<bool> {
-        // LatticeDB REST API doesn't have a direct remove_edge endpoint yet
-        // This is a known limitation of the remote store
-        Ok(false)
+        // The LatticeDB REST API has no edge-removal endpoint. Surface this as
+        // an error rather than a silent `Ok(false)`, so callers don't believe
+        // an edge was checked-and-absent when it actually couldn't be touched.
+        Err(McpMemoryError::Store {
+            message: "remove_edge is unsupported by the remote store (no REST endpoint); \
+                      use the embedded store for edge mutation"
+                .into(),
+        })
     }
 
     async fn delete_memory(&mut self, category: MemoryCategory, id: u64) -> Result<bool> {
-        let url = format!(
-            "{}/points/delete",
-            self.collection_url(category)
-        );
+        let url = format!("{}/points/delete", self.collection_url(category));
 
         let body = serde_json::json!({ "points": [id] });
 
@@ -497,36 +591,58 @@ impl MemoryStore for RemoteStore {
     }
 
     async fn list_all(&self, category: MemoryCategory) -> Result<Vec<Memory>> {
-        // Use scroll API to retrieve all points
+        // Scroll the full collection with offset pagination until exhausted.
+        // (A previous version hard-capped at the first 100 points AND parsed
+        // the wrong envelope shape, silently truncating prune/PageRank.)
+        const PAGE: usize = 512;
         let url = format!("{}/points/scroll", self.collection_url(category));
-        let body = serde_json::json!({ "limit": 100, "with_payload": true });
+        let mut memories = Vec::new();
+        let mut offset: Option<u64> = None;
 
-        let resp = self
-            .client
-            .post(&url)
-            .json(&body)
-            .send()
-            .await
-            .map_err(|e| McpMemoryError::Store {
-                message: format!("Scroll failed: {e}"),
+        loop {
+            let body = serde_json::json!({
+                "limit": PAGE,
+                "offset": offset,
+                "with_payload": true
+            });
+
+            let resp = self
+                .client
+                .post(&url)
+                .json(&body)
+                .send()
+                .await
+                .map_err(|e| McpMemoryError::Store {
+                    message: format!("Scroll failed: {e}"),
+                })?;
+
+            if !resp.status().is_success() {
+                return Ok(memories);
+            }
+
+            let parsed: ScrollResponse = resp.json().await.map_err(|e| McpMemoryError::Store {
+                message: format!("Failed to parse scroll response: {e}"),
             })?;
 
-        if !resp.status().is_success() {
-            return Ok(Vec::new());
-        }
-
-        let parsed: PointResponse = resp.json().await.map_err(|e| McpMemoryError::Store {
-            message: format!("Failed to parse scroll response: {e}"),
-        })?;
-
-        let mut memories = Vec::new();
-        for point in parsed.result.into_iter().flatten() {
-            let byte_payload = Self::convert_payload(&point.payload);
-            match Memory::from_payload(point.id, &byte_payload) {
-                Ok(mem) => memories.push(mem),
-                Err(e) => {
-                    tracing::warn!(id = point.id, "Failed to deserialize point: {e}");
+            let page_len = parsed.result.points.len();
+            for point in parsed.result.points {
+                if let Some(payload) = point.payload {
+                    let byte_payload = Self::convert_payload(&payload);
+                    match Memory::from_payload(point.id, &byte_payload) {
+                        Ok(mem) => memories.push(mem),
+                        Err(e) => {
+                            tracing::warn!(id = point.id, "Failed to deserialize point: {e}");
+                        }
+                    }
                 }
+            }
+
+            // Advance only on a cursor; stop on no-cursor or an empty page
+            // (empty-page guard prevents an infinite loop if the server ever
+            // returns a stale non-null cursor).
+            match parsed.result.next_page_offset {
+                Some(next) if page_len > 0 => offset = Some(next),
+                _ => break,
             }
         }
         Ok(memories)
@@ -558,7 +674,7 @@ impl MemoryStore for RemoteStore {
 
     async fn total_count(&self) -> Result<usize> {
         let mut total = 0;
-        for &cat in MemoryCategory::all() {
+        for &cat in MemoryCategory::all_storage() {
             total += self.count(cat).await?;
         }
         Ok(total)

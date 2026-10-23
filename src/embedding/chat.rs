@@ -6,14 +6,39 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use crate::config::ConsolidationConfig;
+use crate::embedding::chat_types::{DistilledKnowledge, EntailmentVerdict, QueryTransform};
 use crate::error::{McpMemoryError, Result};
 use crate::memory::types::Memory;
 
-/// SBIO boundary: abstracts LLM chat completions for consolidation.
+/// SBIO boundary: abstracts LLM chat completions.
+///
+/// Beyond `summarize`, three optional methods support LLM-augmented features
+/// (Steps 7/9/10). Their default impls return `Ok(None)` so a provider that
+/// does not implement them transparently falls back to the deterministic
+/// algorithmic path (PCND — no implicit behavior, explicit decline signal).
 #[async_trait]
 pub trait ChatProvider: Send + Sync {
     /// Summarize a cluster of memories into a single concise knowledge statement.
     async fn summarize(&self, memories: &[Memory]) -> Result<String>;
+
+    /// Judge whether `candidate` contradicts/entails `existing` (Step 9).
+    async fn entailment(
+        &self,
+        _existing: &str,
+        _candidate: &str,
+    ) -> Result<Option<EntailmentVerdict>> {
+        Ok(None)
+    }
+
+    /// Produce a structured distillation of a memory cluster (Step 7).
+    async fn distill(&self, _memories: &[Memory]) -> Result<Option<DistilledKnowledge>> {
+        Ok(None)
+    }
+
+    /// Rewrite / expand a retrieval query before embedding (Step 10).
+    async fn transform_query(&self, _query: &str) -> Result<Option<QueryTransform>> {
+        Ok(None)
+    }
 }
 
 pub struct OpenAiChat {
@@ -66,7 +91,10 @@ impl OpenAiChat {
         };
 
         Ok(Some(Self {
-            client: reqwest::Client::new(),
+            client: reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(120))
+                .build()
+                .unwrap_or_else(|_| reqwest::Client::new()),
             endpoint,
             model,
             api_key,
@@ -80,7 +108,14 @@ impl ChatProvider for OpenAiChat {
         let memories_text: Vec<String> = memories
             .iter()
             .enumerate()
-            .map(|(i, m)| format!("{}. [{}] {}", i + 1, m.category.collection_name(), m.content))
+            .map(|(i, m)| {
+                format!(
+                    "{}. [{}] {}",
+                    i + 1,
+                    m.category.collection_name(),
+                    m.content
+                )
+            })
             .collect();
         let joined = memories_text.join("\n");
 

@@ -25,13 +25,19 @@ struct Args {
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize logging to stderr (stdout reserved for MCP stdio)
-    tracing_subscriber::fmt()
+    // Span close events carry each instrumented op's duration; set
+    // LATTICE_LOG_FORMAT=json for machine-parseable structured logs.
+    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| "lattice_mcp=info".into());
+    let builder = tracing_subscriber::fmt()
         .with_writer(std::io::stderr)
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "lattice_mcp=info".into()),
-        )
-        .init();
+        .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE)
+        .with_env_filter(env_filter);
+    if std::env::var("LATTICE_LOG_FORMAT").is_ok_and(|v| v.eq_ignore_ascii_case("json")) {
+        builder.json().init();
+    } else {
+        builder.init();
+    }
 
     let args = Args::parse();
     let config_path = expand_path(&args.config);
@@ -46,7 +52,10 @@ async fn main() -> Result<()> {
     let chat: Option<Box<dyn lattice_mcp::embedding::chat::ChatProvider>> =
         match config.consolidation.mode {
             ConsolidationMode::Llm | ConsolidationMode::Auto => {
-                match OpenAiChat::new(&config.consolidation, config.embedding.api_key_env.as_deref())? {
+                match OpenAiChat::new(
+                    &config.consolidation,
+                    config.embedding.api_key_env.as_deref(),
+                )? {
                     Some(c) => Some(Box::new(c)),
                     None => None,
                 }
@@ -72,11 +81,11 @@ async fn main() -> Result<()> {
     };
 
     // Build optional reranker provider
-    let reranker: Option<Box<dyn lattice_mcp::reranker::RerankerProvider>> =
-        match &config.reranker {
-            Some(rr_cfg) => Some(Box::new(HttpReranker::new(rr_cfg)?)),
-            None => None,
-        };
+    let reranker: Option<Box<dyn lattice_mcp::reranker::RerankerProvider>> = match &config.reranker
+    {
+        Some(rr_cfg) => Some(Box::new(HttpReranker::new(rr_cfg)?)),
+        None => None,
+    };
 
     // Build memory system
     let mut memory_system = MemorySystem::new(store, embedder, chat, reranker, config);

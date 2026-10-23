@@ -1,7 +1,7 @@
 //! Write-time importance signals: TF-IDF uniqueness and salience.
 //!
 //! Computed once when a memory is stored. Both use the vector search
-//! results that `auto_link_similar()` already produces, so no extra
+//! results that `find_similar()` already produces, so no extra
 //! I/O is needed (SBIO).
 //!
 //! - **TF-IDF uniqueness**: inverse of max similarity to existing memories.
@@ -58,7 +58,10 @@ mod tests {
         // Very high similarity to existing memory
         let scores = vec![0.98, 0.85, 0.72];
         let u = tfidf_uniqueness(&scores);
-        assert!(u < 0.1, "near-duplicate should have low uniqueness, got {u}");
+        assert!(
+            u < 0.1,
+            "near-duplicate should have low uniqueness, got {u}"
+        );
     }
 
     #[test]
@@ -66,7 +69,10 @@ mod tests {
         // Low similarity to all existing memories
         let scores = vec![0.15, 0.10, 0.08];
         let u = tfidf_uniqueness(&scores);
-        assert!(u > 0.8, "novel content should have high uniqueness, got {u}");
+        assert!(
+            u > 0.8,
+            "novel content should have high uniqueness, got {u}"
+        );
     }
 
     #[test]
@@ -74,7 +80,7 @@ mod tests {
         // Edge case: negative similarity (shouldn't happen but safety)
         let scores = vec![-0.1];
         let u = tfidf_uniqueness(&scores);
-        assert!(u <= 1.0 && u >= 0.0);
+        assert!((0.0..=1.0).contains(&u));
     }
 
     #[test]
@@ -87,7 +93,10 @@ mod tests {
         // Very close neighbors → content is expected
         let scores = vec![0.95, 0.92, 0.90];
         let s = salience(&scores);
-        assert!(s < 0.15, "similar neighbors should give low salience, got {s}");
+        assert!(
+            s < 0.15,
+            "similar neighbors should give low salience, got {s}"
+        );
     }
 
     #[test]
@@ -95,7 +104,10 @@ mod tests {
         // Far neighbors → content is surprising
         let scores = vec![0.1, 0.15, 0.2];
         let s = salience(&scores);
-        assert!(s > 0.8, "distant neighbors should give high salience, got {s}");
+        assert!(
+            s > 0.8,
+            "distant neighbors should give high salience, got {s}"
+        );
     }
 
     #[test]
@@ -111,6 +123,6 @@ mod tests {
     fn salience_clamped() {
         let scores = vec![1.5]; // shouldn't happen but safety
         let s = salience(&scores);
-        assert!(s >= 0.0 && s <= 1.0);
+        assert!((0.0..=1.0).contains(&s));
     }
 }

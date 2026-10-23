@@ -1,7 +1,9 @@
 use rmcp::model::CallToolResult;
 use rmcp::ErrorData as McpError;
 
-use super::{error_result, json_result, parse_category, text_result, MemoryServer, UpdateMemoryInput};
+use super::{
+    error_result, json_result, parse_category, text_result, MemoryServer, UpdateMemoryInput,
+};
 use crate::memory::types::MemoryCategory;
 
 pub async fn handle(

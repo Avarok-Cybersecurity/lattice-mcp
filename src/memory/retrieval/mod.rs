@@ -1,6 +1,11 @@
 //! Pure retrieval functions — HybridRAG scoring, ranking, deduplication.
 //! No I/O, no side effects.
 
+pub mod diversify;
+pub mod fusion;
+pub mod lexical;
+pub mod query;
+
 use crate::config::RetrievalConfig;
 use crate::memory::types::ScoredMemory;
 
@@ -26,8 +31,8 @@ pub fn hybrid_score(
 /// Closer neighbors contribute more via inverse-depth weighting: `1/(depth+1)`.
 /// Returns [0.0, 1.0].
 pub fn graph_relevance_from_traversal(
-    neighbor_ids: &[(u64, usize)], // (target_id, depth)
-    result_ids: &[u64],            // IDs from vector search hits
+    neighbor_ids: &[(u64, usize)],               // (target_id, depth)
+    result_ids: &std::collections::HashSet<u64>, // IDs from vector search hits
 ) -> f32 {
     if neighbor_ids.is_empty() || result_ids.is_empty() {
         return 0.0;
@@ -106,9 +111,13 @@ mod tests {
         assert!((score - 0.4).abs() < 0.001);
     }
 
+    fn id_set(ids: &[u64]) -> std::collections::HashSet<u64> {
+        ids.iter().copied().collect()
+    }
+
     #[test]
     fn graph_relevance_empty() {
-        let score = graph_relevance_from_traversal(&[], &[1, 2, 3]);
+        let score = graph_relevance_from_traversal(&[], &id_set(&[1, 2, 3]));
         assert!((score - 0.0).abs() < 0.001);
     }
 
@@ -116,7 +125,7 @@ mod tests {
     fn graph_relevance_direct_neighbor() {
         // ID 2 is at depth 1, and 2 is in result_ids
         let neighbors = vec![(2, 1)];
-        let result_ids = vec![1, 2, 3];
+        let result_ids = id_set(&[1, 2, 3]);
         let score = graph_relevance_from_traversal(&neighbors, &result_ids);
         // 1/(1+1) = 0.5
         assert!((score - 0.5).abs() < 0.001);
@@ -125,7 +134,7 @@ mod tests {
     #[test]
     fn graph_relevance_no_overlap() {
         let neighbors = vec![(10, 1), (11, 2)];
-        let result_ids = vec![1, 2, 3];
+        let result_ids = id_set(&[1, 2, 3]);
         let score = graph_relevance_from_traversal(&neighbors, &result_ids);
         assert!((score - 0.0).abs() < 0.001);
     }
