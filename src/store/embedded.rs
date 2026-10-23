@@ -12,35 +12,11 @@ use lattice_core::CollectionEngine;
 use lattice_storage::DiskStorage;
 
 use crate::error::{McpMemoryError, Result};
-use crate::memory::types::{
-    relations, Memory, MemoryCategory, SearchHit, TraversalHit,
-};
+use crate::memory::types::{relations, Memory, MemoryCategory, SearchHit, TraversalHit};
 
 use super::MemoryStore;
 
 type DurableEngine = CollectionEngine<DiskStorage, DiskStorage>;
-
-/// Reverse-map a (category, relation_id) pair back to the relation name string.
-fn relation_name(category: MemoryCategory, id: u16) -> String {
-    match (category, id) {
-        (MemoryCategory::Episodic, 0) => relations::PRECEDED_BY,
-        (MemoryCategory::Episodic, 1) => relations::CAUSED,
-        (MemoryCategory::Episodic, 2) => relations::RESOLVED_BY,
-        (MemoryCategory::Episodic, 3) => relations::LEARNED_FROM,
-        (MemoryCategory::Episodic, 4) => relations::EVIDENCED_BY,
-        (MemoryCategory::Semantic, 0) => relations::RELATES_TO,
-        (MemoryCategory::Semantic, 1) => relations::DEPENDS_ON,
-        (MemoryCategory::Semantic, 2) => relations::CONTRADICTS,
-        (MemoryCategory::Semantic, 3) => relations::SUPERSEDES,
-        (MemoryCategory::Semantic, 4) => relations::USES_KNOWLEDGE,
-        (MemoryCategory::Procedural, 0) => relations::APPLIES_TO,
-        (MemoryCategory::Procedural, 1) => relations::ALTERNATIVE_TO,
-        (MemoryCategory::Procedural, 2) => relations::REQUIRES,
-        // Pinned has no relations
-        _ => "UNKNOWN",
-    }
-    .to_string()
-}
 
 /// Embedded store wrapping three durable LatticeDB collection engines.
 pub struct EmbeddedStore {
@@ -59,19 +35,19 @@ impl EmbeddedStore {
     }
 
     fn engine(&self, category: MemoryCategory) -> Result<&DurableEngine> {
-        self.engines.get(&category).ok_or_else(|| {
-            McpMemoryError::CollectionNotInitialized {
+        self.engines
+            .get(&category)
+            .ok_or_else(|| McpMemoryError::CollectionNotInitialized {
                 name: category.collection_name().into(),
-            }
-        })
+            })
     }
 
     fn engine_mut(&mut self, category: MemoryCategory) -> Result<&mut DurableEngine> {
-        self.engines.get_mut(&category).ok_or_else(|| {
-            McpMemoryError::CollectionNotInitialized {
+        self.engines
+            .get_mut(&category)
+            .ok_or_else(|| McpMemoryError::CollectionNotInitialized {
                 name: category.collection_name().into(),
-            }
-        })
+            })
     }
 
     fn build_config(&self, category: MemoryCategory) -> CollectionConfig {
@@ -89,33 +65,9 @@ impl EmbeddedStore {
             hnsw,
         );
 
-        // Register relations per category
-        match category {
-            MemoryCategory::Episodic => {
-                config = config
-                    .with_relation(relations::PRECEDED_BY, 0)
-                    .with_relation(relations::CAUSED, 1)
-                    .with_relation(relations::RESOLVED_BY, 2)
-                    .with_relation(relations::LEARNED_FROM, 3)
-                    .with_relation(relations::EVIDENCED_BY, 4);
-            }
-            MemoryCategory::Semantic => {
-                config = config
-                    .with_relation(relations::RELATES_TO, 0)
-                    .with_relation(relations::DEPENDS_ON, 1)
-                    .with_relation(relations::CONTRADICTS, 2)
-                    .with_relation(relations::SUPERSEDES, 3)
-                    .with_relation(relations::USES_KNOWLEDGE, 4);
-            }
-            MemoryCategory::Procedural => {
-                config = config
-                    .with_relation(relations::APPLIES_TO, 0)
-                    .with_relation(relations::ALTERNATIVE_TO, 1)
-                    .with_relation(relations::REQUIRES, 2);
-            }
-            MemoryCategory::Pinned => {
-                // No relations for pinned memories
-            }
+        // Register relations from the single-source-of-truth registry.
+        for (name, id) in relations::relations_for(category) {
+            config = config.with_relation(name, id);
         }
 
         config
@@ -133,9 +85,12 @@ impl EmbeddedStore {
 
         // Initialize storage backends
         let wal_storage = DiskStorage::with_defaults(wal_dir);
-        wal_storage.init().await.map_err(|e| McpMemoryError::Store {
-            message: format!("WAL storage init failed for {name}: {e}"),
-        })?;
+        wal_storage
+            .init()
+            .await
+            .map_err(|e| McpMemoryError::Store {
+                message: format!("WAL storage init failed for {name}: {e}"),
+            })?;
 
         let data_storage = DiskStorage::with_defaults(data_dir);
         data_storage
@@ -160,7 +115,7 @@ impl EmbeddedStore {
 #[async_trait]
 impl MemoryStore for EmbeddedStore {
     async fn initialize(&mut self) -> Result<()> {
-        for &category in MemoryCategory::all() {
+        for &category in MemoryCategory::all_storage() {
             let engine = self.open_or_create(category).await?;
             let count = engine.point_count();
             tracing::info!(
@@ -176,6 +131,10 @@ impl MemoryStore for EmbeddedStore {
     async fn upsert_memory(&mut self, memory: &Memory, vector: Vec<f32>) -> Result<()> {
         let engine = self.engine_mut(memory.category)?;
 
+        // `Point::new_vector` leaves `outgoing_edges` as None, which lattice-core
+        // treats as "update point STATE only, keep existing edges" — so a
+        // state-only re-upsert (rate_recall, update_pagerank, prune-demote,
+        // update_memory, avatar re-observation) never erases the node's edges.
         let mut point = Point::new_vector(memory.id, vector);
         for (key, value) in memory.to_payload() {
             point = point.with_field(key, value);
@@ -218,6 +177,33 @@ impl MemoryStore for EmbeddedStore {
         }
     }
 
+    async fn get_memories(&self, category: MemoryCategory, ids: &[u64]) -> Result<Vec<Memory>> {
+        let engine = self.engine(category)?;
+        let points = engine.get_points(ids)?;
+        let mut out = Vec::new();
+        for point in points.into_iter().flatten() {
+            match Memory::from_payload(point.id, &point.payload) {
+                Ok(m) => out.push(m),
+                Err(e) => tracing::warn!(id = point.id, "Failed to deserialize point: {e}"),
+            }
+        }
+        Ok(out)
+    }
+
+    async fn get_vectors(
+        &self,
+        category: MemoryCategory,
+        ids: &[u64],
+    ) -> Result<Vec<(u64, Vec<f32>)>> {
+        let engine = self.engine(category)?;
+        let points = engine.get_points(ids)?;
+        Ok(points
+            .into_iter()
+            .flatten()
+            .map(|p| (p.id, p.vector))
+            .collect())
+    }
+
     async fn traverse(
         &self,
         category: MemoryCategory,
@@ -234,7 +220,7 @@ impl MemoryStore for EmbeddedStore {
             .map(|path| TraversalHit {
                 target_id: path.target_id,
                 depth: path.depth,
-                relation: relation_name(category, path.relation_id),
+                relation: relations::relation_name(category, path.relation_id).to_string(),
             })
             .collect())
     }
@@ -262,9 +248,7 @@ impl MemoryStore for EmbeddedStore {
         relation: Option<&str>,
     ) -> Result<bool> {
         let engine = self.engine_mut(category)?;
-        let removed = engine
-            .remove_edge_async(from_id, to_id, relation)
-            .await?;
+        let removed = engine.remove_edge_async(from_id, to_id, relation).await?;
         Ok(removed)
     }
 
@@ -297,7 +281,7 @@ impl MemoryStore for EmbeddedStore {
 
     async fn total_count(&self) -> Result<usize> {
         let mut total = 0;
-        for &cat in MemoryCategory::all() {
+        for &cat in MemoryCategory::all_storage() {
             if let Ok(engine) = self.engine(cat) {
                 total += engine.point_count();
             }

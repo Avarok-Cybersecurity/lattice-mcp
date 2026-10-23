@@ -57,7 +57,10 @@ impl HttpReranker {
         };
 
         Ok(Self {
-            client: reqwest::Client::new(),
+            client: reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(60))
+                .build()
+                .unwrap_or_else(|_| reqwest::Client::new()),
             endpoint: config.endpoint.clone(),
             model: config.model.clone(),
             api_format: config.api_format.clone(),
@@ -109,10 +112,9 @@ impl RerankerProvider for HttpReranker {
             });
         }
 
-        let parsed: RerankResponse =
-            resp.json().await.map_err(|e| McpMemoryError::Reranker {
-                message: format!("Failed to parse response: {e}"),
-            })?;
+        let parsed: RerankResponse = resp.json().await.map_err(|e| McpMemoryError::Reranker {
+            message: format!("Failed to parse response: {e}"),
+        })?;
 
         Ok(parsed
             .results

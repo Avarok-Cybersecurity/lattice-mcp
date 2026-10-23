@@ -17,10 +17,7 @@ pub async fn handle_start(
 ) -> Result<CallToolResult, McpError> {
     let mut mem = server.memory.lock().await;
     match mem
-        .session_start(
-            input.project.as_deref(),
-            input.task_description.as_deref(),
-        )
+        .session_start(input.project.as_deref(), input.task_description.as_deref())
         .await
     {
         Ok((session_id, context)) => {

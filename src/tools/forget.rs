@@ -4,10 +4,7 @@ use rmcp::ErrorData as McpError;
 use super::{error_result, parse_category, text_result, ForgetInput, MemoryServer};
 use crate::memory::types::MemoryCategory;
 
-pub async fn handle(
-    server: &MemoryServer,
-    input: ForgetInput,
-) -> Result<CallToolResult, McpError> {
+pub async fn handle(server: &MemoryServer, input: ForgetInput) -> Result<CallToolResult, McpError> {
     let category = parse_category(&input.category).unwrap_or(MemoryCategory::Episodic);
 
     let mut mem = server.memory.lock().await;

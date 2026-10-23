@@ -40,10 +40,7 @@ impl OpenAiEmbedder {
         let api_key = match &config.api_key_env {
             Some(env_var) => {
                 let key = std::env::var(env_var).map_err(|_| McpMemoryError::Config {
-                    message: format!(
-                        "Environment variable '{}' not set for API key",
-                        env_var
-                    ),
+                    message: format!("Environment variable '{}' not set for API key", env_var),
                 })?;
                 Some(key)
             }
@@ -51,7 +48,12 @@ impl OpenAiEmbedder {
         };
 
         Ok(Self {
-            client: reqwest::Client::new(),
+            // Generous timeout: embedding an 8B model batch can take seconds,
+            // but a hung endpoint must not block recall/remember forever.
+            client: reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(120))
+                .build()
+                .unwrap_or_else(|_| reqwest::Client::new()),
             endpoint: config.endpoint.clone(),
             model: config.model.clone(),
             dimensions: config.dimensions,
@@ -64,11 +66,9 @@ impl OpenAiEmbedder {
 impl EmbeddingProvider for OpenAiEmbedder {
     async fn embed(&self, text: &str) -> Result<Vec<f32>> {
         let mut results = self.embed_batch(&[text]).await?;
-        results
-            .pop()
-            .ok_or_else(|| McpMemoryError::Embedding {
-                message: "empty response from embedding API".into(),
-            })
+        results.pop().ok_or_else(|| McpMemoryError::Embedding {
+            message: "empty response from embedding API".into(),
+        })
     }
 
     async fn embed_batch(&self, texts: &[&str]) -> Result<Vec<Vec<f32>>> {

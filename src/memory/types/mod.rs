@@ -13,6 +13,9 @@ pub enum MemoryCategory {
     Semantic,
     Procedural,
     Pinned,
+    /// Persistent user model. Slot-keyed, cross-session; accessed via the
+    /// avatar_* tools, NOT via remember/recall-default. Opt-in feature.
+    Avatar,
 }
 
 impl MemoryCategory {
@@ -22,47 +25,50 @@ impl MemoryCategory {
             Self::Semantic => "semantic",
             Self::Procedural => "procedural",
             Self::Pinned => "pinned",
+            Self::Avatar => "avatar",
         }
     }
 
+    /// The base memory categories used by generic recall/reflect/stats.
+    /// Avatar is intentionally EXCLUDED so the user model never leaks into
+    /// ordinary task recall — it is queried explicitly via avatar_search.
     pub fn all() -> &'static [MemoryCategory] {
-        &[Self::Episodic, Self::Semantic, Self::Procedural, Self::Pinned]
+        &[
+            Self::Episodic,
+            Self::Semantic,
+            Self::Procedural,
+            Self::Pinned,
+        ]
     }
 
+    /// Every category that backs a physical collection (includes Avatar).
+    /// Used for store initialization and total counts.
+    pub fn all_storage() -> &'static [MemoryCategory] {
+        &[
+            Self::Episodic,
+            Self::Semantic,
+            Self::Procedural,
+            Self::Pinned,
+            Self::Avatar,
+        ]
+    }
+
+    // Intentionally inherent (not the `FromStr` trait): returns Option, no
+    // error type, used as a lightweight category parser at call sites.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "episodic" => Some(Self::Episodic),
             "semantic" => Some(Self::Semantic),
             "procedural" => Some(Self::Procedural),
             "pinned" => Some(Self::Pinned),
+            "avatar" => Some(Self::Avatar),
             _ => None,
         }
     }
 }
 
-/// Relation constants — each maps to a u16 ID in LatticeDB's relation registry.
-pub mod relations {
-    // Episodic relations
-    pub const PRECEDED_BY: &str = "PRECEDED_BY";
-    pub const CAUSED: &str = "CAUSED";
-    pub const RESOLVED_BY: &str = "RESOLVED_BY";
-
-    // Semantic relations
-    pub const RELATES_TO: &str = "RELATES_TO";
-    pub const DEPENDS_ON: &str = "DEPENDS_ON";
-    pub const CONTRADICTS: &str = "CONTRADICTS";
-    pub const SUPERSEDES: &str = "SUPERSEDES";
-
-    // Procedural relations
-    pub const APPLIES_TO: &str = "APPLIES_TO";
-    pub const ALTERNATIVE_TO: &str = "ALTERNATIVE_TO";
-    pub const REQUIRES: &str = "REQUIRES";
-
-    // Cross-category (stored in the target collection)
-    pub const LEARNED_FROM: &str = "LEARNED_FROM";
-    pub const EVIDENCED_BY: &str = "EVIDENCED_BY";
-    pub const USES_KNOWLEDGE: &str = "USES_KNOWLEDGE";
-}
+pub mod relations;
 
 /// Core memory record — the authoritative in-flight representation (SSOT).
 /// Persisted as Point payload fields in LatticeDB.
@@ -93,6 +99,11 @@ pub enum MemoryMetadata {
     Semantic {
         entity_type: String,
         confidence: f32,
+        /// Source memory IDs this knowledge was consolidated from (Step 7).
+        /// Empty for non-consolidated semantic memories. `#[serde(default)]`
+        /// keeps pre-provenance payloads deserializable.
+        #[serde(default)]
+        provenance: Vec<u64>,
     },
     Procedural {
         pattern_type: String,
@@ -103,6 +114,45 @@ pub enum MemoryMetadata {
     Pinned {
         label: String,
     },
+    /// Persistent user-model slot (see `memory::avatar`).
+    Avatar {
+        /// Which avatar this belongs to (default "default"); enables multi-avatar.
+        avatar_id: String,
+        /// Curated slot key, e.g. "preferred_language" (or freeform if allowed).
+        slot_key: String,
+        /// Authoritative (redacted) slot value. The memory `content` is the
+        /// derived search projection `render(slot_key, value)` — SSOT is here.
+        value: String,
+        /// Shape of the slot value.
+        value_kind: ValueKind,
+        /// Belief strength in [0,1] = α/(α+β) from the Bayesian state; never
+        /// hand-set — it sharpens as evidence accumulates.
+        confidence: f32,
+        /// Source memory/interaction IDs this slot was derived from.
+        #[serde(default)]
+        provenance: Vec<u64>,
+        /// How many observations have reinforced this slot.
+        evidence_count: u32,
+        /// The immediately-prior value this one replaced (one-step reversible
+        /// audit trail for confidence-gated last-writer-wins). `None` on first
+        /// write or reinforcement.
+        #[serde(default)]
+        prior_value: Option<String>,
+    },
+}
+
+/// Shape of an avatar slot's value.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ValueKind {
+    /// A single stable value (e.g. timezone).
+    Scalar,
+    /// One choice from a known set (e.g. communication_tone).
+    Enum,
+    /// Multiple values (e.g. tooling).
+    List,
+    /// Unstructured free text.
+    FreeText,
 }
 
 impl Memory {
@@ -115,6 +165,22 @@ impl Memory {
         input.extend_from_slice(content.as_bytes());
         // Mask to 53 bits so IDs survive JSON round-trips through JavaScript
         // runtimes (Number.MAX_SAFE_INTEGER = 2^53 - 1).
+        xxh3_64(&input) & 0x1F_FFFF_FFFF_FFFF
+    }
+
+    /// Deterministic point ID for an avatar slot.
+    ///
+    /// Hashes `collection + avatar_id + slot_key` — NOT the value — so that
+    /// re-observing the same slot UPSERTs the same point and the avatar
+    /// sharpens over time instead of accreting duplicates. This is the
+    /// guarded counterpart to `content_id`: non-avatar IDs stay byte-identical.
+    pub fn avatar_point_id(avatar_id: &str, slot_key: &str) -> u64 {
+        use xxhash_rust::xxh3::xxh3_64;
+        let mut input = MemoryCategory::Avatar.collection_name().as_bytes().to_vec();
+        input.push(b':');
+        input.extend_from_slice(avatar_id.as_bytes());
+        input.push(b':');
+        input.extend_from_slice(slot_key.as_bytes());
         xxh3_64(&input) & 0x1F_FFFF_FFFF_FFFF
     }
 
@@ -165,9 +231,11 @@ impl Memory {
     /// Deserialize from a LatticeDB point payload.
     pub fn from_payload(id: u64, payload: &HashMap<String, Vec<u8>>) -> crate::error::Result<Self> {
         let get = |key: &str| -> crate::error::Result<&Vec<u8>> {
-            payload.get(key).ok_or_else(|| crate::error::McpMemoryError::Store {
-                message: format!("missing payload field: {key}"),
-            })
+            payload
+                .get(key)
+                .ok_or_else(|| crate::error::McpMemoryError::Store {
+                    message: format!("missing payload field: {key}"),
+                })
         };
 
         Ok(Self {
@@ -229,65 +297,4 @@ pub struct RelatedMemory {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn content_id_is_deterministic() {
-        let id1 = Memory::content_id("test content", MemoryCategory::Episodic);
-        let id2 = Memory::content_id("test content", MemoryCategory::Episodic);
-        assert_eq!(id1, id2);
-    }
-
-    #[test]
-    fn content_id_differs_by_category() {
-        let id1 = Memory::content_id("test content", MemoryCategory::Episodic);
-        let id2 = Memory::content_id("test content", MemoryCategory::Semantic);
-        assert_ne!(id1, id2);
-    }
-
-    #[test]
-    fn payload_roundtrip() {
-        let mem = Memory {
-            id: 42,
-            category: MemoryCategory::Episodic,
-            content: "Fixed the login bug".into(),
-            created_at: Utc::now(),
-            last_accessed: Utc::now(),
-            access_count: 1,
-            importance: 0.7,
-            session_id: Some("session-1".into()),
-            metadata: MemoryMetadata::Episodic {
-                event_type: "error".into(),
-            },
-            importance_state: ImportanceState::default(),
-        };
-        let payload = mem.to_payload();
-        let restored = Memory::from_payload(42, &payload).unwrap();
-        assert_eq!(restored.content, mem.content);
-        assert_eq!(restored.importance, mem.importance);
-        assert_eq!(restored.id, 42);
-        assert_eq!(restored.importance_state.alpha, 1.0);
-    }
-
-    #[test]
-    fn payload_roundtrip_without_importance_state() {
-        // Simulates old memories that lack the importance_state field.
-        let mut payload = HashMap::new();
-        let now = Utc::now();
-        payload.insert("content".into(), serde_json::to_vec("old memory").unwrap());
-        payload.insert("category".into(), serde_json::to_vec(&MemoryCategory::Episodic).unwrap());
-        payload.insert("created_at".into(), serde_json::to_vec(&now).unwrap());
-        payload.insert("last_accessed".into(), serde_json::to_vec(&now).unwrap());
-        payload.insert("access_count".into(), serde_json::to_vec(&0u64).unwrap());
-        payload.insert("importance".into(), serde_json::to_vec(&0.5f32).unwrap());
-        payload.insert("metadata".into(), serde_json::to_vec(&MemoryMetadata::Episodic {
-            event_type: "test".into(),
-        }).unwrap());
-        // No "importance_state" key — should use defaults
-        let restored = Memory::from_payload(99, &payload).unwrap();
-        assert_eq!(restored.importance_state.alpha, 1.0);
-        assert_eq!(restored.importance_state.beta, 1.0);
-        assert_eq!(restored.importance_state.pagerank, 0.0);
-    }
-}
+mod tests;

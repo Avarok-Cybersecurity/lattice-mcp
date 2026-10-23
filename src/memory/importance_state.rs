@@ -42,6 +42,11 @@ pub struct ImportanceState {
     /// Cached PageRank score from periodic graph analysis [0.0, 1.0].
     pub pagerank: f32,
 
+    /// Write-time novelty: 1.0 = fully novel, 0.0 = duplicate of an existing
+    /// memory. Set by the optional write-policy feature (Step 3); neutral
+    /// (0.5) until computed or when the feature is disabled.
+    pub novelty: f32,
+
     /// Timestamp of last feedback event (for FSRS/SM-2 interval calculations).
     pub last_review: Option<DateTime<Utc>>,
 }
@@ -49,16 +54,17 @@ pub struct ImportanceState {
 impl Default for ImportanceState {
     fn default() -> Self {
         Self {
-            alpha: 1.0,           // Beta(1,1) = uniform prior ("we know nothing")
-            beta: 1.0,            // Beta(1,1) = uniform prior
-            fsrs_stability: 1.0,  // 1 day initial stability
-            fsrs_difficulty: 0.3, // moderate difficulty
-            sm2_easiness: 2.5,    // SM-2 standard initial EF
-            sm2_interval: 1.0,    // 1 day initial interval
-            sm2_repetitions: 0,   // no successful recalls yet
+            alpha: 1.0,            // Beta(1,1) = uniform prior ("we know nothing")
+            beta: 1.0,             // Beta(1,1) = uniform prior
+            fsrs_stability: 1.0,   // 1 day initial stability
+            fsrs_difficulty: 0.3,  // moderate difficulty
+            sm2_easiness: 2.5,     // SM-2 standard initial EF
+            sm2_interval: 1.0,     // 1 day initial interval
+            sm2_repetitions: 0,    // no successful recalls yet
             tfidf_uniqueness: 0.5, // neutral until computed
             salience: 0.5,         // neutral until computed
             pagerank: 0.0,         // unranked until first PageRank pass
+            novelty: 0.5,          // neutral until computed
             last_review: None,     // no feedback yet
         }
     }
@@ -81,6 +87,7 @@ mod tests {
         assert_eq!(state.tfidf_uniqueness, 0.5);
         assert_eq!(state.salience, 0.5);
         assert_eq!(state.pagerank, 0.0);
+        assert_eq!(state.novelty, 0.5);
         assert!(state.last_review.is_none());
     }
 

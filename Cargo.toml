@@ -16,6 +16,8 @@ lattice-storage = { path = "../lattice-db/crates/lattice-storage", features = ["
 # Async runtime
 tokio = { version = "1", features = ["full"] }
 async-trait = "0.1"
+# Concurrent awaits (join_all) for batched/parallel store round-trips
+futures = "0.3"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -34,7 +36,7 @@ anyhow = "1.0"
 
 # Logging (stderr only — stdout reserved for MCP stdio)
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 
 # CLI
 clap = { version = "4.5", features = ["derive"] }

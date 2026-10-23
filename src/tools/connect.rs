@@ -13,7 +13,13 @@ pub async fn handle(
 
     let mut mem = server.memory.lock().await;
     match mem
-        .connect(input.from_id, input.to_id, &input.relation, weight, category)
+        .connect(
+            input.from_id,
+            input.to_id,
+            &input.relation,
+            weight,
+            category,
+        )
         .await
     {
         Ok(()) => Ok(text_result(&format!(
