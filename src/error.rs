@@ -39,4 +39,19 @@ pub enum McpMemoryError {
     Io(#[from] std::io::Error),
 }
 
+impl From<lattice_memory_core::error::MemoryCoreError> for McpMemoryError {
+    fn from(e: lattice_memory_core::error::MemoryCoreError) -> Self {
+        use lattice_memory_core::error::MemoryCoreError as Core;
+        match e {
+            Core::MissingPayloadField { key } => Self::Store {
+                message: format!("missing payload field: {key}"),
+            },
+            Core::Serialization(e) => Self::Serialization(e),
+            e @ Core::SettlementWinnerNotInConflict { .. } => Self::Store {
+                message: e.to_string(),
+            },
+        }
+    }
+}
+
 pub type Result<T> = std::result::Result<T, McpMemoryError>;

@@ -1,6 +1,5 @@
 //! Recall-feedback operation — updates adaptive importance state.
 
-use chrono::Utc;
 use tracing::info;
 
 use crate::error::Result;
@@ -28,7 +27,7 @@ pub(crate) async fn rate_recall(
         None => return Ok(None),
     };
 
-    let now = Utc::now();
+    let now = sys.clock.now();
     let elapsed_days = {
         let last = memory
             .importance_state

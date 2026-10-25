@@ -1,0 +1,27 @@
+[package]
+name = "lattice-memory-core"
+version = "0.1.0"
+edition = "2021"
+description = "Pure agent-memory model of lattice-mcp: types, importance, retrieval, consolidation, lifecycle, avatar. no_std + alloc, no I/O."
+license = "MIT OR Apache-2.0"
+
+[features]
+default = []
+# Host builds turn this on. It switches the payload map to std's HashMap (the
+# type LatticeDB points carry) and routes float transcendentals through std,
+# so a std host computes exactly what it computed before the extraction.
+std = ["serde/std", "serde_json/std", "chrono/std", "thiserror/std"]
+# JsonSchema derives for types that appear in MCP tool inputs.
+schema = ["dep:schemars"]
+
+[dependencies]
+serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+chrono = { version = "0.4", default-features = false, features = ["alloc", "serde"] }
+xxhash-rust = { version = "0.8", default-features = false, features = ["xxh3"] }
+thiserror = { version = "2.0", default-features = false }
+libm = "0.2"
+schemars = { version = "1", default-features = false, features = ["derive"], optional = true }
+
+[dev-dependencies]
+chrono = { version = "0.4", default-features = false, features = ["alloc", "serde", "clock"] }

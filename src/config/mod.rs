@@ -2,10 +2,9 @@ use crate::error::{McpMemoryError, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-mod importance;
 mod types;
 mod validate;
-pub use importance::*;
+pub use lattice_memory_core::config::*;
 pub use types::*;
 
 #[cfg(test)]

@@ -3,19 +3,15 @@
 //! Operation bodies live in `ops::*`; methods here are thin delegations
 //! plus small store-passthrough utilities.
 
-pub mod avatar;
-pub mod consolidation;
-pub mod contradiction;
-pub mod importance;
-pub mod importance_state;
-pub mod lifecycle;
+pub mod clock;
 pub mod ops;
-pub mod retrieval;
-pub mod scoring;
-pub mod types;
-pub mod write_surprise;
 
-use chrono::Utc;
+// The pure model lives in `lattice-memory-core`; re-exported under the
+// paths it had before the extraction.
+pub use lattice_memory_core::{
+    avatar, consolidation, contradiction, importance, importance_state, lifecycle, retrieval,
+    scoring, types, write_surprise,
+};
 
 use crate::config::Config;
 use crate::embedding::chat::ChatProvider;
@@ -23,6 +19,7 @@ use crate::embedding::EmbeddingProvider;
 use crate::error::Result;
 use crate::reranker::RerankerProvider;
 use crate::store::MemoryStore;
+use lattice_memory_core::clock::Clock;
 
 use self::types::*;
 
@@ -32,6 +29,8 @@ pub struct MemorySystem {
     chat: Option<Box<dyn ChatProvider>>,
     reranker: Option<Box<dyn RerankerProvider>>,
     config: Config,
+    /// The only source of "now" for every operation.
+    clock: Box<dyn Clock + Send + Sync>,
     current_session_id: Option<String>,
     /// Consolidatable memories written since the last consolidation
     /// (Step 8 auto-trigger). Counts `remember` writes (episodic/semantic/
@@ -57,9 +56,16 @@ impl MemorySystem {
             chat,
             reranker,
             config,
+            clock: Box::new(clock::SystemClock),
             current_session_id: None,
             writes_since_consolidation: 0,
         }
+    }
+
+    /// Replace the wall clock (replays, deterministic hosts).
+    pub fn with_clock(mut self, clock: Box<dyn Clock + Send + Sync>) -> Self {
+        self.clock = clock;
+        self
     }
 
     pub async fn initialize(&mut self) -> Result<()> {
@@ -228,7 +234,7 @@ impl MemorySystem {
         if let Some(i) = importance {
             memory.importance = i;
         }
-        memory.last_accessed = Utc::now();
+        memory.last_accessed = self.clock.now();
         memory.access_count += 1;
 
         let vector = self.embedder.embed(&memory.content).await?;

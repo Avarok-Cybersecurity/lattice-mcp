@@ -1,0 +1,157 @@
+scoring.decay 0 30 3f800000 3f800000
+scoring.decay 24 30 3f7a2728 3f7a2728
+scoring.decay 1080 30 3eb504f3 3eb504f3
+scoring.decay 9600 365 3eef89ae 3eef89ae
+scoring.decay -5 7 3f800000 3f800000
+scoring.access 00000000 0 00000000
+scoring.access 3f000000 3 3f11b91c
+scoring.access 3f666666 50 3f800000
+scoring.access 3f800000 1000 3f800000
+scoring.auto 3f59999a
+scoring.auto 3f59999a
+scoring.auto 3f266666
+scoring.auto 3f266666
+scoring.auto 3f000000
+scoring.auto 3f59999a
+scoring.auto 3f000000
+scoring.auto 3f333333
+fsrs.init Episodic 3f800000
+fsrs.init Semantic 40e00000
+fsrs.init Procedural 40400000
+fsrs.init Pinned 470e9400
+fsrs.init Avatar 470e9400
+fsrs.retention 3f800000 0 3f800000
+fsrs.retention 3f800000 1 3ebc5ab2
+fsrs.retention 40e00000 3.5 3f1b4598
+fsrs.retention 3a83126f 2 00000000
+fsrs.retention 42b40000 400 3c406859
+sm2.prio 3f800000 40200000 3f4ccccd 3e4ccccc
+sm2.prio 40c00000 3fa66666 3f0fd1fa 3ee05c0c
+sm2.prio 41f00000 40333333 3dd9df51 3f64c416
+sm2.prio 00000000 3fa66666 3f800000 00000000
+bayes 0 3f000000 3f24f34e 3ecd1ad1
+upd 0 0 | 3f800000 3f800000 3eb851ec 3efae148 40200000 3f800000 0 | 3f800000 3f800000 3f800000 3e99999a 3fd9999a 3f800000 0 | 3f800000 40000000 3f800000 3e99999a 40200000 3f800000 0
+upd 0 1 | 3f800000 3f800000 3eb851ec 3eeb851f 40200000 3f800000 0 | 3f800000 3f800000 3f800000 3e99999a 3ffae148 3f800000 0 | 3f800000 40000000 3f800000 3e99999a 40200000 3f800000 0
+upd 0 2 | 3f800000 3f800000 3eb851ec 3edc28f6 40200000 3f800000 0 | 3f800000 3f800000 3f800000 3e99999a 400b851f 3f800000 0 | 3f800000 40000000 3f800000 3e99999a 40200000 3f800000 0
+upd 0 3 | 3f800000 3f800000 3f800000 3e800000 40200000 3f800000 0 | 3f800000 3f800000 3f800000 3e99999a 40170a3e 3f800000 1 | 40000000 3f800000 3f800000 3e99999a 40200000 3f800000 0
+upd 0 4 | 3f800000 3f800000 3f800000 3e6b851f 40200000 3f800000 0 | 3f800000 3f800000 3f800000 3e99999a 40200000 3f800000 1 | 40000000 3f800000 3f800000 3e99999a 40200000 3f800000 0
+upd 0 5 | 3f800000 3f800000 3f800000 3e570a3e 40200000 3f800000 0 | 3f800000 3f800000 3f800000 3e99999a 40266666 3f800000 1 | 40000000 3f800000 3f800000 3e99999a 40200000 3f800000 0
+bayes 1 3f36db6e 3f4b4d1b 3f109426
+upd 1 0 | 40a00000 40000000 3e23d70b 3e947ae1 3fa66666 3f800000 0 | 40a00000 40000000 3f000000 3dcccccd 3fa66666 3f800000 0 | 4099c1e3 403ce0f2 3f000000 3dcccccd 3fa66666 3f800000 0
+upd 1 1 | 40a00000 40000000 3e23d70b 3e851eb8 3fa66666 3f800000 0 | 40a00000 40000000 3f000000 3dcccccd 3fa66666 3f800000 0 | 4099c1e3 403ce0f2 3f000000 3dcccccd 3fa66666 3f800000 0
+upd 1 2 | 40a00000 40000000 3e23d70b 3e6b851f 3fa66666 3f800000 0 | 40a00000 40000000 3f000000 3dcccccd 3fa66666 3f800000 0 | 4099c1e3 403ce0f2 3f000000 3dcccccd 3fa66666 3f800000 0
+upd 1 3 | 40a00000 40000000 3f39363e 3d4ccccd 3fa66666 3f800000 0 | 40a00000 40000000 3f000000 3dcccccd 3fa66666 3f800000 1 | 40b9c1e3 3ff9c1e3 3f000000 3dcccccd 3fa66666 3f800000 0
+upd 1 4 | 40a00000 40000000 3f39363e 3cf5c290 3fa66666 3f800000 0 | 40a00000 40000000 3f000000 3dcccccd 3fa66666 3f800000 1 | 40b9c1e3 3ff9c1e3 3f000000 3dcccccd 3fa66666 3f800000 0
+upd 1 5 | 40a00000 40000000 3f39363e 3c23d70c 3fa66666 3f800000 0 | 40a00000 40000000 3f000000 3dcccccd 3fb33333 3f800000 1 | 40b9c1e3 3ff9c1e3 3f000000 3dcccccd 3fa66666 3f800000 0
+bayes 2 3dcccccd 3e14b64f 3ebb4d2d
+upd 2 0 | 3f800000 41100000 3fc18937 3efae148 3fd99999 40e00000 2 | 3f800000 41100000 40866666 3e99999a 3fa66666 3f800000 0 | 3f800000 4113d1b6 40866666 3e99999a 3fd99999 40e00000 2
+upd 2 1 | 3f800000 41100000 3fc18937 3eeb851f 3fd99999 40e00000 2 | 3f800000 41100000 40866666 3e99999a 3fa66666 3f800000 0 | 3f800000 4113d1b6 40866666 3e99999a 3fd99999 40e00000 2
+upd 2 2 | 3f800000 41100000 3fc18937 3edc28f6 3fd99999 40e00000 2 | 3f800000 41100000 40866666 3e99999a 3fb0a3d6 3f800000 0 | 3f800000 4113d1b6 40866666 3e99999a 3fd99999 40e00000 2
+upd 2 3 | 3f800000 41100000 40a722e0 3e800000 3fd99999 40e00000 2 | 3f800000 41100000 40866666 3e99999a 3fc7ae14 412eb852 3 | 40000000 4103d1b6 40866666 3e99999a 3fd99999 40e00000 2
+upd 2 4 | 3f800000 41100000 40a722e0 3e6b851f 3fd99999 40e00000 2 | 3f800000 41100000 40866666 3e99999a 3fd99999 413e6666 3 | 40000000 4103d1b6 40866666 3e99999a 3fd99999 40e00000 2
+upd 2 5 | 3f800000 41100000 40a722e0 3e570a3e 3fd99999 40e00000 2 | 3f800000 41100000 40866666 3e99999a 3fe66666 41499999 3 | 40000000 4103d1b6 40866666 3e99999a 3fd99999 40e00000 2
+bayes 3 3f000000 3f0831c2 3f106e2d
+upd 3 0 | 41f00000 41f00000 404a3d71 3f30a3d7 40066666 41500000 4 | 41f00000 41f00000 40fccccd 3f000000 3fa66666 3f800000 0 | 41cfaf2b 41d7af2b 40fccccd 3f000000 40066666 41500000 4
+upd 3 1 | 41f00000 41f00000 404a3d71 3f28f5c3 40066666 41500000 4 | 41f00000 41f00000 40fccccd 3f000000 3fc7ae14 3f800000 0 | 41cfaf2b 41d7af2b 40fccccd 3f000000 40066666 41500000 4
+upd 3 2 | 41f00000 41f00000 404a3d71 3f2147ae 40066666 41500000 4 | 41f00000 41f00000 40fccccd 3f000000 3fe3d709 3f800000 0 | 41cfaf2b 41d7af2b 40fccccd 3f000000 40066666 41500000 4
+upd 3 3 | 41f00000 41f00000 4111c571 3ee66666 40066666 41500000 4 | 41f00000 41f00000 40fccccd 3f000000 3ffae147 41cbd70a 5 | 41d7af2b 41cfaf2b 40fccccd 3f000000 40066666 41500000 4
+upd 3 4 | 41f00000 41f00000 4111c571 3edc28f5 40066666 41500000 4 | 41f00000 41f00000 40fccccd 3f000000 40066666 41da6666 5 | 41d7af2b 41cfaf2b 40fccccd 3f000000 40066666 41500000 4
+upd 3 5 | 41f00000 41f00000 4111c571 3ed1eb85 40066666 41500000 4 | 41f00000 41f00000 40fccccd 3f000000 400ccccc 41e4cccc 5 | 41d7af2b 41cfaf2b 40fccccd 3f000000 40066666 41500000 4
+bayes 4 3f2aaaab 3f58477e 3f1d0a64
+upd 4 0 | 3f000000 3e800000 40a353f9 3f63d70b 40200000 41980000 6 | 3f000000 3e800000 4139999a 3f333334 3fd9999a 3f800000 0 | 3f800000 40000000 4139999a 3f333334 40200000 41980000 6
+upd 4 1 | 3f000000 3e800000 40a353f9 3f5c28f7 40200000 41980000 6 | 3f000000 3e800000 4139999a 3f333334 3ffae148 3f800000 0 | 3f800000 40000000 4139999a 3f333334 40200000 41980000 6
+upd 4 2 | 3f000000 3e800000 40a353f9 3f547ae2 40200000 41980000 6 | 3f000000 3e800000 4139999a 3f333334 400b851f 3f800000 0 | 3f800000 40000000 4139999a 3f333334 40200000 41980000 6
+upd 4 3 | 3f000000 3e800000 4149aefb 3f266667 40200000 41980000 6 | 3f000000 3e800000 4139999a 3f333334 40170a3e 42335c2a 7 | 40000000 3f800000 4139999a 3f333334 40200000 41980000 6
+upd 4 4 | 3f000000 3e800000 4149aefb 3f2147af 40200000 41980000 6 | 3f000000 3e800000 4139999a 3f333334 40200000 423e0000 7 | 40000000 3f800000 4139999a 3f333334 40200000 41980000 6
+upd 4 5 | 3f000000 3e800000 4149aefb 3f1c28f6 40200000 41980000 6 | 3f000000 3e800000 4139999a 3f333334 40266666 42459999 7 | 40000000 3f800000 4139999a 3f333334 40200000 41980000 6
+pagerank 0 1:3f800000,2:3f800000,3:3f800000
+pagerank 1 10:3ef4e0e1,11:3f1d215e,12:3f1d215e,13:3f1d215e,14:3f800000
+pagerank 2 5:3f0a60dd,6:3f800000,7:3f0a60dd,8:3f800000,9:3f0a60dd
+write  | 3f800000 3f800000 3f800000 false
+write 3dcccccd | 3f666666 3f666666 3f666666 true
+write 3f733333,3ecccccd,3e4ccccd | 3d4cccd0 3ef77778 3d4cccd0 true
+write 3f7d70a4,3f7ae148 | 3c23d700 3c75c280 3c23d700 true
+write be4ccccd,3e99999a | 3f333333 3f733334 3f333333 true
+contra 3f266667 true false
+contra 3e99999a false false
+contra 3ecccccd false false
+contra 3f800000 true false
+consol.summary Pattern across 4 memories (key topics: deploy, pipeline, staging): deploy pipeline staging recovered
+consol.summary1 deploy pipeline staging broke after the cache migration
+consol.summary0 []
+consol.clusters 2 [[0, 1]]
+consol.clusters 1 [[0, 1]]
+consol.clusters 3 []
+distill "Pattern across 4 memories (key topics: deploy, pipeline, staging): deploy pipeline staging recovered" "Distilled from 4 memories (episodic)" "deploy" [1, 2, 3, 4] | Pattern across 4 memories (key topics: deploy, pipeline, staging): deploy pipeline staging recovered [theme: deploy] (Distilled from 4 memories (episodic))
+trigger 0 false
+trigger 3 false
+trigger 10 true
+trigger 11 true
+hybrid 3f228f5c 3f33d70a
+hybrid 3ef0a3d8 3f1eb852
+hybrid 00000000 3ec51eb8
+graphrel [1, 2, 3] 3eb8e38f
+graphrel [9] 3f000000
+graphrel [] 00000000
+graphrel [4, 5] 00000000
+rank [2, 1, 3]
+fusion.w 3ecccccd,3e800000,3e4ccccd,3e19999a
+fusion.w 3ecccccd,3e800000,3e4ccccd,3e19999a
+fusion.w 3e54fdf3,3e800000,3e4ccccd,3eaf1aa0
+fusion.rrf 3d839f35,3d831d2c,3d821d1c,3d7d0bd0,3d831d2d
+fusion.apply ConfidenceWeighted 3ef4e81c,3f23126e,3ed1eb85,3dccccce,3f058bf3
+fusion.apply Rrf 3d839f35,3d831d2c,3d821d1c,3d7d0bd0,3d831d2d
+mmr 3f800000 [0, 1, 2, 3]
+mmr 3f333333 [0, 2, 3, 1]
+mmr 3e99999a [0, 2, 3, 4]
+mmr 00000000 [0, 2, 3, 4]
+lexical "what e_auth_401" | 00000000,00000000,00000000,00000000,00000000,3f000000,00000000,00000000
+lexical "user passwords stored" | 00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000
+lexical "the of and" | 00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000
+lexical "v2.3.1 internal/healthz" | 00000000,00000000,00000000,00000000,3f800000,00000000,00000000,00000000
+evict 10 true [] []
+evict 4 false [] [7, 6, 1, 4]
+evict 4 true [6, 1, 4] [7]
+evict 0 true [0, 5, 2, 3, 7, 6, 1, 4] []
+avatar.merge Insert 40400000 3f800000 3f800000 3e99999a 40200000 3f800000 0 3f400000
+avatar.merge Reinforce 40400000 3f800000 3f800000 3e99999a 40200000 3f800000 0 3f400000
+avatar.merge Supersede 40000000 3f800000 3f800000 3e99999a 40200000 3f800000 0 3f2aaaab
+avatar.derive [("preferred_language", "Rust"), ("timezone", "UTC+2"), ("editor", "helix")]
+avatar.derive [("tooling", "cargo"), ("os_platform", "linux")]
+avatar.derive []
+avatar.redact "mail me at <redacted:email> or +1 555 123 4567" true ["email"]
+avatar.redact "<redacted:custom> Corp builds it" true ["custom"]
+avatar.redact "plain" false []
+avatar.schema "preferred_language" Scalar Ok(()) Ok(()) "preferred_language: x"
+avatar.schema "tooling" List Ok(()) Ok(()) "tooling: x"
+avatar.schema "favourite_colour" FreeText Err("unknown slot_key 'favourite_colour'; use a curated slot or enable avatar.allow_freeform") Ok(()) "favourite_colour: x"
+avatar.schema "" FreeText Err("slot_key must not be empty") Err("slot_key must not be empty") ": x"
+id episodic 3737580539953444 4326125084324302
+relations episodic PRECEDED_BY=0,CAUSED=1,RESOLVED_BY=2,LEARNED_FROM=3,EVIDENCED_BY=4
+id semantic 1470965713541632 5746933412233122
+relations semantic RELATES_TO=0,DEPENDS_ON=1,CONTRADICTS=2,SUPERSEDES=3,USES_KNOWLEDGE=4
+id procedural 2975785986087445 5228782620178255
+relations procedural APPLIES_TO=0,ALTERNATIVE_TO=1,REQUIRES=2
+id pinned 4403579122239310 7120825588653791
+relations pinned 
+id avatar 2281679419223767 3854379854628129
+relations avatar SUPERSEDES=0,RELATES_TO=1
+payload 5 access_count 5
+payload 5 category "episodic"
+payload 5 content "payload \"quoted\" ünïcode"
+payload 5 created_at "2026-05-19T20:26:40Z"
+payload 5 importance 0.33
+payload 5 importance_state {"alpha":1.0,"beta":1.0,"fsrs_stability":1.0,"fsrs_difficulty":0.3,"sm2_easiness":2.5,"sm2_interval":1.0,"sm2_repetitions":0,"tfidf_uniqueness":0.5,"salience":0.5,"pagerank":0.0,"novelty":0.5,"last_review":null}
+payload 5 last_accessed "2026-05-27T17:26:40Z"
+payload 5 metadata {"type":"episodic","event_type":"observation"}
+payload 5 session_id "s2"
+payload.back {"id":5,"category":"episodic","content":"payload \"quoted\" ünïcode","created_at":"2026-05-19T20:26:40Z","last_accessed":"2026-05-27T17:26:40Z","access_count":5,"importance":0.33,"session_id":"s2","metadata":{"type":"episodic","event_type":"observation"},"importance_state":{"alpha":1.0,"beta":1.0,"fsrs_stability":1.0,"fsrs_difficulty":0.3,"sm2_easiness":2.5,"sm2_interval":1.0,"sm2_repetitions":0,"tfidf_uniqueness":0.5,"salience":0.5,"pagerank":0.0,"novelty":0.5,"last_review":null}}
+payload 77 access_count 0
+payload 77 category "avatar"
+payload 77 content "preferred_language: rust"
+payload 77 created_at "2026-05-26T20:26:40Z"
+payload 77 importance 0.7
+payload 77 importance_state {"alpha":1.0,"beta":9.0,"fsrs_stability":4.2,"fsrs_difficulty":0.3,"sm2_easiness":1.6999999,"sm2_interval":7.0,"sm2_repetitions":2,"tfidf_uniqueness":0.2,"salience":0.75,"pagerank":0.25,"novelty":0.3,"last_review":"2026-05-28T03:26:40Z"}
+payload 77 last_accessed "2026-05-28T14:26:40Z"
+payload 77 metadata {"type":"avatar","avatar_id":"default","slot_key":"preferred_language","value":"rust","value_kind":"scalar","confidence":0.75,"provenance":[3,1],"evidence_count":2,"prior_value":"go"}
+payload.back {"id":77,"category":"avatar","content":"preferred_language: rust","created_at":"2026-05-26T20:26:40Z","last_accessed":"2026-05-28T14:26:40Z","access_count":0,"importance":0.7,"session_id":null,"metadata":{"type":"avatar","avatar_id":"default","slot_key":"preferred_language","value":"rust","value_kind":"scalar","confidence":0.75,"provenance":[3,1],"evidence_count":2,"prior_value":"go"},"importance_state":{"alpha":1.0,"beta":9.0,"fsrs_stability":4.2,"fsrs_difficulty":0.3,"sm2_easiness":1.6999999,"sm2_interval":7.0,"sm2_repetitions":2,"tfidf_uniqueness":0.2,"salience":0.75,"pagerank":0.25,"novelty":0.3,"last_review":"2026-05-28T03:26:40Z"}}

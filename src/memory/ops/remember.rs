@@ -7,7 +7,6 @@
 //! state only), so later state updates are edge-safe. Creating edges before the
 //! point exists would still target a missing node, hence the ordering here.
 
-use chrono::Utc;
 use tracing::info;
 
 use crate::error::{McpMemoryError, Result};
@@ -68,7 +67,7 @@ pub(crate) async fn run_inner(
         });
     }
 
-    let now = Utc::now();
+    let now = sys.clock.now();
     let id = Memory::content_id(content, category);
 
     let et = event_type.unwrap_or("general");
