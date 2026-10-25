@@ -2,7 +2,7 @@
 //! returned unless the caller asks for it (2609.08258 — revoked memories
 //! otherwise keep steering answers). Filtering happens before truncation, so
 //! a filtered hit's place goes to the next candidate. lattice-mcp's recall
-//! does not call this yet; the host needs a persisted retraction mark first.
+//! calls it when `[retrieval_filter]` is enabled.
 
 use alloc::collections::BTreeMap;
 
@@ -75,6 +75,7 @@ mod tests {
                     entity_type: "fact".into(),
                     confidence: 0.9,
                     provenance: vec![],
+                    superseded_by: None,
                 },
                 importance_state: Default::default(),
             },

@@ -114,6 +114,11 @@ pub enum MemoryMetadata {
         /// keeps pre-provenance payloads deserializable.
         #[serde(default)]
         provenance: Vec<u64>,
+        /// The memory that superseded this one, written with the
+        /// `SUPERSEDES` edge while `[retrieval_filter]` is enabled. Omitted
+        /// from the payload when `None`, so unmarked payloads are unchanged.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        superseded_by: Option<u64>,
     },
     Procedural {
         pattern_type: String,
@@ -167,6 +172,14 @@ pub enum ValueKind {
 }
 
 impl Memory {
+    /// The id of the memory that superseded this one, if it was marked.
+    pub fn superseded_by(&self) -> Option<u64> {
+        match self.metadata {
+            MemoryMetadata::Semantic { superseded_by, .. } => superseded_by,
+            _ => None,
+        }
+    }
+
     /// Deterministic point ID from content + category.
     /// Uses xxh3 so the same content always gets the same ID.
     pub fn content_id(content: &str, category: MemoryCategory) -> u64 {

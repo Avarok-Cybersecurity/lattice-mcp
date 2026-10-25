@@ -55,6 +55,10 @@ pub struct Config {
     /// Omit (or `enabled = false`) to keep pure semantic+graph scoring.
     #[serde(default)]
     pub multi_signal: Option<MultiSignalConfig>,
+    /// Optional retraction filter: hide superseded memories from recall.
+    /// Omit (or `enabled = false`) to return them as before.
+    #[serde(default)]
+    pub retrieval_filter: Option<RetrievalFilterConfig>,
 }
 
 impl Config {

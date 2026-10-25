@@ -81,6 +81,7 @@ pub(crate) async fn run_inner(
             entity_type: et.to_string(),
             confidence: imp,
             provenance,
+            superseded_by: None,
         },
         MemoryCategory::Procedural => MemoryMetadata::Procedural {
             pattern_type: et.to_string(),
